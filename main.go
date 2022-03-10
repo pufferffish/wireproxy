@@ -12,6 +12,7 @@ import (
     "net/http"
     "os"
     "strings"
+    "strconv"
 
     "golang.zx2c4.com/go118/netip"
     "golang.zx2c4.com/wireguard/conn"
@@ -156,7 +157,31 @@ func createIPCRequest(conf Configuration) (string, []netip.Addr, error) {
         return "", nil, err
     }
 
-    request := fmt.Sprintf("private_key=%s\npublic_key=%s\nendpoint=%s\nallowed_ip=0.0.0.0/0\n", selfSK, peerPK, endpoint)
+    keepAlive := int64(0)
+    if keepAliveOpt, ok := root["keepalive"]; ok {
+        keepAlive, err = strconv.ParseInt(keepAliveOpt, 10, 0)
+        if err != nil {
+            return "", nil, err
+        }
+        if keepAlive < 0 {
+            keepAlive = 0
+        }
+    }
+
+    preSharedKey := "0000000000000000000000000000000000000000000000000000000000000000"
+    if pskOpt, ok := root["presharedkey"]; ok {
+        preSharedKey, err = parseBase64Key(pskOpt)
+        if err != nil {
+            return "", nil, err
+        }
+    }
+
+    request := fmt.Sprintf(`private_key=%s
+public_key=%s
+endpoint=%s
+persistent_keepalive_interval=%d
+preshared_key=%s
+allowed_ip=0.0.0.0/0`, selfSK, peerPK, endpoint, keepAlive, preSharedKey)
     return request, dns, nil
 }
 
@@ -176,6 +201,7 @@ func main() {
         log.Panic(err)
     }
 
+    fmt.Println(request)
     test(request, dns)
 }
 
