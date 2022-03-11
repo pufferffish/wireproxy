@@ -192,13 +192,18 @@ func socks5Routine(config map[string]string) (*netip.Addr, func(*netstack.Net), 
         return nil, nil, err
     }
 
+    vpnIP := net.ParseIP(vpnAddr.String())
+    if vpnIP == nil {
+        return nil, nil, errors.New("invalid ip")
+    }
+
     bindAddr, ok := config["bindaddress"]
     if !ok {
         return nil, nil, errors.New("missing bind address")
     }
 
     routine := func(tnet *netstack.Net) {
-        conf := &socks5.Config{ Dial: tnet.DialContext }
+        conf := &socks5.Config{ Dial: tnet.DialContext, BindIP: vpnIP }
         server, err := socks5.New(conf)
         if err != nil {
           log.Panic(err)
@@ -206,6 +211,72 @@ func socks5Routine(config map[string]string) (*netip.Addr, func(*netstack.Net), 
 
         if err := server.ListenAndServe("tcp", bindAddr); err != nil {
           log.Panic(err)
+        }
+    }
+
+    return &vpnAddr, routine, nil
+}
+
+func connForward(bufSize int, from, to net.Conn) {
+    buf := make([]byte, bufSize)
+    for {
+        size, err := from.Read(buf)
+        if err != nil {
+            to.Close()
+            return
+        }
+        _, err = to.Write(buf[:size])
+        if err != nil {
+            to.Close()
+            return
+        }
+    }
+}
+
+func tcpClientForward(tnet *netstack.Net, target string, conn net.Conn) {
+    sconn, err := tnet.Dial("tcp", target)
+    if err != nil {
+        fmt.Printf("[ERROR] TCP Client Tunnel to %s: %s\n", target, err.Error())
+        return
+    }
+
+    go connForward(1024, sconn, conn)
+    go connForward(1024, conn, sconn)
+}
+
+func tcpClientRoutine(config map[string]string) (*netip.Addr, func(*netstack.Net), error) {
+    vpnAddr, err := netip.ParseAddr(config["vpnaddress"])
+    if err != nil {
+        return nil, nil, err
+    }
+
+    bindAddr, ok := config["bindaddress"]
+    if !ok {
+        return nil, nil, errors.New("missing bind address")
+    }
+
+    bindTCPAddr, err := net.ResolveTCPAddr("tcp", bindAddr)
+    if err != nil {
+        return nil, nil, err
+    }
+
+    target, ok := config["target"]
+    if !ok {
+        return nil, nil, errors.New("missing target")
+    }
+
+    routine := func(tnet *netstack.Net) {
+        server, err := net.ListenTCP("tcp", bindTCPAddr)
+        if err != nil {
+          log.Panic(err)
+        }
+
+        for {
+            conn, err := server.Accept()
+            if err != nil {
+                log.Panic(err)
+            }
+            go tcpClientForward(tnet, target, conn)
         }
     }
 
@@ -249,7 +320,7 @@ func main() {
         case "[socks5]":
             addr, routine, err = socks5Routine(section.entries)
         case "[tcpclienttunnel]":
-            log.Panic(errors.New("not supported yet"))
+            addr, routine, err = tcpClientRoutine(section.entries)
         case "[tcpservertunnel]":
             log.Panic(errors.New("not supported yet"))
         case "ROOT":
