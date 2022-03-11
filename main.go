@@ -347,6 +347,8 @@ func main() {
     }
 
     for _, netRoutine := range routines {
-        netRoutine(tnet)
+        go netRoutine(tnet)
     }
+
+    select{} // sleep etnerally
 }
