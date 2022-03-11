@@ -6,13 +6,13 @@ import (
     "encoding/hex"
     "errors"
     "fmt"
-    "io"
     "log"
     "net"
-    "net/http"
     "os"
     "strings"
     "strconv"
+
+    "github.com/armon/go-socks5"
 
     "golang.zx2c4.com/go118/netip"
     "golang.zx2c4.com/wireguard/conn"
@@ -90,6 +90,7 @@ func readConfig(path string) (Configuration, error) {
         return nil, err
     }
 
+    sections = append(sections, section)
     return sections, nil
 }
 
@@ -185,15 +186,51 @@ allowed_ip=0.0.0.0/0`, selfSK, peerPK, endpoint, keepAlive, preSharedKey)
     return request, dns, nil
 }
 
+func socks5Routine(config map[string]string) (*netip.Addr, func(*netstack.Net), error) {
+    vpnAddr, err := netip.ParseAddr(config["vpnaddress"])
+    if err != nil {
+        return nil, nil, err
+    }
+
+    bindAddr, ok := config["bindaddress"]
+    if !ok {
+        return nil, nil, errors.New("missing bind address")
+    }
+
+    routine := func(tnet *netstack.Net) {
+        conf := &socks5.Config{ Dial: tnet.DialContext }
+        server, err := socks5.New(conf)
+        if err != nil {
+          log.Panic(err)
+        }
+
+        if err := server.ListenAndServe("tcp", bindAddr); err != nil {
+          log.Panic(err)
+        }
+    }
+
+    return &vpnAddr, routine, nil
+}
+
+func startWireguard(request string, boundAddrs, dns []netip.Addr) (*netstack.Net, error) {
+    tun, tnet, err := netstack.CreateNetTUN(boundAddrs, dns, 1420)
+    if err != nil {
+        return nil, err
+    }
+    dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, ""))
+    dev.IpcSet(request)
+    err = dev.Up()
+    if err != nil {
+        return nil, err
+    }
+
+    return tnet, nil
+}
+
 func main() {
-    fmt.Println("hi")
     conf, err := readConfig("/home/octeep/.config/wireproxy")
     if err != nil {
         log.Panic(err)
-    }
-
-    for _, section := range conf {
-        fmt.Println(section.name)
     }
 
     request, dns, err := createIPCRequest(conf)
@@ -201,36 +238,44 @@ func main() {
         log.Panic(err)
     }
 
-    fmt.Println(request)
-    test(request, dns)
-}
+    routines := [](func(*netstack.Net)){}
+    boundAddrs := []netip.Addr{}
 
-func test(request string, dns []netip.Addr) {
-    tun, tnet, err := netstack.CreateNetTUN(
-        []netip.Addr{netip.MustParseAddr("172.16.31.2")},
-        dns, 1420)
-    if err != nil {
-        log.Panic(err)
+    var addr *netip.Addr
+    var routine func(*netstack.Net)
+
+    confloop: for _, section := range conf {
+        switch section.name {
+        case "[socks5]":
+            addr, routine, err = socks5Routine(section.entries)
+        case "[tcpclienttunnel]":
+            log.Panic(errors.New("not supported yet"))
+        case "[tcpservertunnel]":
+            log.Panic(errors.New("not supported yet"))
+        case "ROOT":
+            continue
+        default:
+            log.Panic(errors.New(fmt.Sprintf("unsupported proxy: %s", section.name)))
+        }
+        if err != nil {
+            log.Panic(err)
+        }
+        routines = append(routines, routine)
+
+        for _, addr2 := range boundAddrs {
+            if addr2.Compare(*addr) == 0 {
+                continue confloop
+            }
+        }
+        boundAddrs = append(boundAddrs, *addr)
     }
-    dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, ""))
-    dev.IpcSet(request)
-    err = dev.Up()
+
+    tnet, err := startWireguard(request, boundAddrs, dns)
     if err != nil {
         log.Panic(err)
     }
 
-    client := http.Client{
-        Transport: &http.Transport{
-            DialContext: tnet.DialContext,
-        },
+    for _, netRoutine := range routines {
+        netRoutine(tnet)
     }
-    resp, err := client.Get("https://www.zx2c4.com/ip")
-    if err != nil {
-        log.Panic(err)
-    }
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        log.Panic(err)
-    }
-    log.Println(string(body))
 }
