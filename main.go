@@ -281,6 +281,52 @@ func tcpClientRoutine(config map[string]string) (func(*netstack.Net), error) {
     return routine, nil
 }
 
+func tcpServerForward(target string, conn net.Conn) {
+    sconn, err := net.Dial("tcp", target)
+    if err != nil {
+        fmt.Printf("[ERROR] TCP Server Tunnel to %s: %s\n", target, err.Error())
+        return
+    }
+
+    go connForward(1024, sconn, conn)
+    go connForward(1024, conn, sconn)
+}
+
+func tcpServerRoutine(config map[string]string) (func(*netstack.Net), error) {
+    listenPort, err := strconv.ParseInt(config["listenport"], 10, 0)
+    if err != nil {
+        return nil, err
+    }
+
+    if listenPort < 1 || listenPort > 65535 {
+        return nil, errors.New("listen port out of bound")
+    }
+
+    addr := &net.TCPAddr{Port : int(listenPort)}
+
+    target, ok := config["target"]
+    if !ok {
+        return nil, errors.New("missing target")
+    }
+
+    routine := func(tnet *netstack.Net) {
+        server, err := tnet.ListenTCP(addr)
+        if err != nil {
+          log.Panic(err)
+        }
+
+        for {
+            conn, err := server.Accept()
+            if err != nil {
+                log.Panic(err)
+            }
+            go tcpServerForward(target, conn)
+        }
+    }
+
+    return routine, nil
+}
+
 func startWireguard(setting *DeviceSetting) (*netstack.Net, error) {
     tun, tnet, err := netstack.CreateNetTUN([]netip.Addr{*(setting.deviceAddr)}, setting.dns, 1420)
     if err != nil {
@@ -318,7 +364,7 @@ func main() {
         case "[tcpclienttunnel]":
             routine, err = tcpClientRoutine(section.entries)
         case "[tcpservertunnel]":
-            log.Panic(errors.New("not supported yet"))
+            routine, err = tcpServerRoutine(section.entries)
         case "ROOT":
             continue
         default:
