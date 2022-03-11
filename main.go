@@ -25,6 +25,12 @@ type ConfigSection struct {
     entries map[string]string
 }
 
+type DeviceSetting struct {
+    ipcRequest  string
+    dns         []netip.Addr
+    deviceAddr  *netip.Addr
+}
+
 type Configuration []ConfigSection
 
 func configRoot(config Configuration) map[string]string {
@@ -135,34 +141,39 @@ func parseIPs(s string) ([]netip.Addr, error) {
     return ips, nil
 }
 
-func createIPCRequest(conf Configuration) (string, []netip.Addr, error) {
+func createIPCRequest(conf Configuration) (*DeviceSetting, error) {
     root := configRoot(conf)
 
     peerPK, err := parseBase64Key(root["peerpublickey"])
     if err != nil {
-        return "", nil, err
+        return nil, err
     }
 
     selfSK, err := parseBase64Key(root["selfsecretkey"])
     if err != nil {
-        return "", nil, err
+        return nil, err
     }
 
-    endpoint, err := resolveIPPAndPort(root["peerendpoint"])
+    peerEndpoint, err := resolveIPPAndPort(root["peerendpoint"])
     if err != nil {
-        return "", nil, err
+        return nil, err
+    }
+
+    selfEndpoint, err := netip.ParseAddr(root["selfendpoint"])
+    if err != nil {
+        return nil, err
     }
 
     dns, err := parseIPs(root["dns"])
     if err != nil {
-        return "", nil, err
+        return nil, err
     }
 
     keepAlive := int64(0)
     if keepAliveOpt, ok := root["keepalive"]; ok {
         keepAlive, err = strconv.ParseInt(keepAliveOpt, 10, 0)
         if err != nil {
-            return "", nil, err
+            return nil, err
         }
         if keepAlive < 0 {
             keepAlive = 0
@@ -173,7 +184,7 @@ func createIPCRequest(conf Configuration) (string, []netip.Addr, error) {
     if pskOpt, ok := root["presharedkey"]; ok {
         preSharedKey, err = parseBase64Key(pskOpt)
         if err != nil {
-            return "", nil, err
+            return nil, err
         }
     }
 
@@ -182,28 +193,20 @@ public_key=%s
 endpoint=%s
 persistent_keepalive_interval=%d
 preshared_key=%s
-allowed_ip=0.0.0.0/0`, selfSK, peerPK, endpoint, keepAlive, preSharedKey)
-    return request, dns, nil
+allowed_ip=0.0.0.0/0`, selfSK, peerPK, peerEndpoint, keepAlive, preSharedKey)
+
+    setting := &DeviceSetting{ ipcRequest: request, dns: dns, deviceAddr: &selfEndpoint }
+    return setting, nil
 }
 
-func socks5Routine(config map[string]string) (*netip.Addr, func(*netstack.Net), error) {
-    vpnAddr, err := netip.ParseAddr(config["vpnaddress"])
-    if err != nil {
-        return nil, nil, err
-    }
-
-    vpnIP := net.ParseIP(vpnAddr.String())
-    if vpnIP == nil {
-        return nil, nil, errors.New("invalid ip")
-    }
-
+func socks5Routine(config map[string]string) (func(*netstack.Net), error) {
     bindAddr, ok := config["bindaddress"]
     if !ok {
-        return nil, nil, errors.New("missing bind address")
+        return nil, errors.New("missing bind address")
     }
 
     routine := func(tnet *netstack.Net) {
-        conf := &socks5.Config{ Dial: tnet.DialContext, BindIP: vpnIP }
+        conf := &socks5.Config{ Dial: tnet.DialContext }
         server, err := socks5.New(conf)
         if err != nil {
           log.Panic(err)
@@ -214,7 +217,7 @@ func socks5Routine(config map[string]string) (*netip.Addr, func(*netstack.Net), 
         }
     }
 
-    return &vpnAddr, routine, nil
+    return routine, nil
 }
 
 func connForward(bufSize int, from, to net.Conn) {
@@ -244,25 +247,20 @@ func tcpClientForward(tnet *netstack.Net, target string, conn net.Conn) {
     go connForward(1024, conn, sconn)
 }
 
-func tcpClientRoutine(config map[string]string) (*netip.Addr, func(*netstack.Net), error) {
-    vpnAddr, err := netip.ParseAddr(config["vpnaddress"])
-    if err != nil {
-        return nil, nil, err
-    }
-
+func tcpClientRoutine(config map[string]string) (func(*netstack.Net), error) {
     bindAddr, ok := config["bindaddress"]
     if !ok {
-        return nil, nil, errors.New("missing bind address")
+        return nil, errors.New("missing bind address")
     }
 
     bindTCPAddr, err := net.ResolveTCPAddr("tcp", bindAddr)
     if err != nil {
-        return nil, nil, err
+        return nil, err
     }
 
     target, ok := config["target"]
     if !ok {
-        return nil, nil, errors.New("missing target")
+        return nil, errors.New("missing target")
     }
 
     routine := func(tnet *netstack.Net) {
@@ -280,16 +278,16 @@ func tcpClientRoutine(config map[string]string) (*netip.Addr, func(*netstack.Net
         }
     }
 
-    return &vpnAddr, routine, nil
+    return routine, nil
 }
 
-func startWireguard(request string, boundAddrs, dns []netip.Addr) (*netstack.Net, error) {
-    tun, tnet, err := netstack.CreateNetTUN(boundAddrs, dns, 1420)
+func startWireguard(setting *DeviceSetting) (*netstack.Net, error) {
+    tun, tnet, err := netstack.CreateNetTUN([]netip.Addr{*(setting.deviceAddr)}, setting.dns, 1420)
     if err != nil {
         return nil, err
     }
     dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, ""))
-    dev.IpcSet(request)
+    dev.IpcSet(setting.ipcRequest)
     err = dev.Up()
     if err != nil {
         return nil, err
@@ -304,23 +302,21 @@ func main() {
         log.Panic(err)
     }
 
-    request, dns, err := createIPCRequest(conf)
+    setting, err := createIPCRequest(conf)
     if err != nil {
         log.Panic(err)
     }
 
     routines := [](func(*netstack.Net)){}
-    boundAddrs := []netip.Addr{}
 
-    var addr *netip.Addr
     var routine func(*netstack.Net)
 
-    confloop: for _, section := range conf {
+    for _, section := range conf {
         switch section.name {
         case "[socks5]":
-            addr, routine, err = socks5Routine(section.entries)
+            routine, err = socks5Routine(section.entries)
         case "[tcpclienttunnel]":
-            addr, routine, err = tcpClientRoutine(section.entries)
+            routine, err = tcpClientRoutine(section.entries)
         case "[tcpservertunnel]":
             log.Panic(errors.New("not supported yet"))
         case "ROOT":
@@ -331,17 +327,11 @@ func main() {
         if err != nil {
             log.Panic(err)
         }
-        routines = append(routines, routine)
 
-        for _, addr2 := range boundAddrs {
-            if addr2.Compare(*addr) == 0 {
-                continue confloop
-            }
-        }
-        boundAddrs = append(boundAddrs, *addr)
+        routines = append(routines, routine)
     }
 
-    tnet, err := startWireguard(request, boundAddrs, dns)
+    tnet, err := startWireguard(setting)
     if err != nil {
         log.Panic(err)
     }
