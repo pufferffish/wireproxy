@@ -343,7 +343,12 @@ func startWireguard(setting *DeviceSetting) (*netstack.Net, error) {
 }
 
 func main() {
-    conf, err := readConfig("/home/octeep/.config/wireproxy")
+    if len(os.Args) != 2 {
+        fmt.Println("Usage: wireproxy [config file path]")
+        return
+    }
+
+    conf, err := readConfig(os.Args[1])
     if err != nil {
         log.Panic(err)
     }
