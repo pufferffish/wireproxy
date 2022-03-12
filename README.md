@@ -29,8 +29,8 @@ SelfEndpoint = 172.16.31.2
 PeerPublicKey = QP+A67Z2UBrMgvNIdHv8gPel5URWNLS4B3ZQ2hQIZlg=
 # PeerEndpoint is the endpoint of the wireguard server you want to connec to
 PeerEndpoint = 172.16.0.1:53
-# DNS is the DNSs that will be used by wireproxy.
-# Multple DNSs can be specified as such: DNS = 1.1.1.1, 1.0.0.1
+# DNS is the nameservers that will be used by wireproxy.
+# Multple nameservers can be specified as such: DNS = 1.1.1.1, 1.0.0.1
 DNS = 1.1.1.1
 # KeepAlive is the persistent keep alive interval of the wireguard device
 # usually not needed
