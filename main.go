@@ -417,5 +417,5 @@ func main() {
         go netRoutine(tnet)
     }
 
-    select{} // sleep etnerally
+    select{} // sleep eternally
 }
