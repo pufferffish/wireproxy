@@ -11,6 +11,8 @@ import (
     "os"
     "strings"
     "strconv"
+    "context"
+    "math/rand"
 
     "github.com/armon/go-socks5"
 
@@ -31,7 +33,31 @@ type DeviceSetting struct {
     deviceAddr  *netip.Addr
 }
 
+type NetstackDNSResolver struct {
+    tnet *netstack.Net
+}
+
 type Configuration []ConfigSection
+
+func (d NetstackDNSResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
+    addrs, err := d.tnet.LookupContextHost(ctx, name)
+    if err != nil {
+        return ctx, nil, err
+    }
+
+    size := len(addrs)
+    if size == 0 {
+        return ctx, nil, errors.New("no address found for: " + name)
+    }
+
+    addr := addrs[rand.Intn(size)]
+    ip := net.ParseIP(addr)
+    if ip == nil {
+        return ctx, nil, errors.New("invalid address: " + addr)
+    }
+
+    return ctx, ip, err
+}
 
 func configRoot(config Configuration) map[string]string {
     for _, section := range config {
@@ -206,7 +232,7 @@ func socks5Routine(config map[string]string) (func(*netstack.Net), error) {
     }
 
     routine := func(tnet *netstack.Net) {
-        conf := &socks5.Config{ Dial: tnet.DialContext }
+        conf := &socks5.Config{ Dial: tnet.DialContext, Resolver: NetstackDNSResolver{ tnet: tnet } }
         server, err := socks5.New(conf)
         if err != nil {
           log.Panic(err)
