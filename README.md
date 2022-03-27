@@ -22,6 +22,7 @@ anything.
 # Sample config file
 ```
 # SelfSecretKey is the secret key of your wireguard peer
+# This should be the same as the PrivateKey in your client.conf wireguard setting
 SelfSecretKey = uCTIK+56CPyCvwJxmU5dBfuyJvPuSXAq1FzHdnIxe1Q=
 # SelfEndpoint is the IP of your wireguard peer
 SelfEndpoint = 172.16.31.2
@@ -56,4 +57,9 @@ Target = localhost:25545
 # Socks5 create a socks5 proxy on your LAN, and any traffic would be routed via wireguard
 [Socks5]
 BindAddress = 127.0.0.1:25344
+# Socks5 authentication parameters, specifying username and password enables
+# proxy authentication.
+# Username = username_of_user
+# Avoid using spaces in the password field
+# Password = password_of_user
 ```
