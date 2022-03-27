@@ -25,9 +25,9 @@ anything.
 SelfSecretKey = uCTIK+56CPyCvwJxmU5dBfuyJvPuSXAq1FzHdnIxe1Q=
 # SelfEndpoint is the IP of your wireguard peer
 SelfEndpoint = 172.16.31.2
-# PeerPublicKey is the public key of the wireguard server you want to connec to
+# PeerPublicKey is the public key of the wireguard server you want to connect to
 PeerPublicKey = QP+A67Z2UBrMgvNIdHv8gPel5URWNLS4B3ZQ2hQIZlg=
-# PeerEndpoint is the endpoint of the wireguard server you want to connec to
+# PeerEndpoint is the endpoint of the wireguard server you want to connect to
 PeerEndpoint = 172.16.0.1:53
 # DNS is the nameservers that will be used by wireproxy.
 # Multple nameservers can be specified as such: DNS = 1.1.1.1, 1.0.0.1
