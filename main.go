@@ -2,17 +2,17 @@ package main
 
 import (
     "bufio"
+    "context"
     "encoding/base64"
     "encoding/hex"
     "errors"
     "fmt"
     "log"
+    "math/rand"
     "net"
     "os"
-    "strings"
     "strconv"
-    "context"
-    "math/rand"
+    "strings"
 
     "github.com/armon/go-socks5"
 
@@ -38,6 +38,11 @@ type NetstackDNSResolver struct {
 }
 
 type Configuration []ConfigSection
+
+type CredentialValidator struct {
+    username string
+    password string
+}
 
 func (d NetstackDNSResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
     addrs, err := d.tnet.LookupContextHost(ctx, name)
@@ -232,7 +237,16 @@ func socks5Routine(config map[string]string) (func(*netstack.Net), error) {
     }
 
     routine := func(tnet *netstack.Net) {
-        conf := &socks5.Config{ Dial: tnet.DialContext, Resolver: NetstackDNSResolver{ tnet: tnet } }
+        conf := &socks5.Config{Dial: tnet.DialContext, Resolver: NetstackDNSResolver{tnet: tnet}}
+        if username, ok := config["username"]; ok {
+            validator := CredentialValidator{username: username}
+            password, ok := config["password"]
+            if ok {
+                validator.password = password
+            }
+
+            conf.Credentials = validator
+        }
         server, err := socks5.New(conf)
         if err != nil {
           log.Panic(err)
@@ -245,6 +259,11 @@ func socks5Routine(config map[string]string) (func(*netstack.Net), error) {
 
     return routine, nil
 }
+
+func (c CredentialValidator) Valid(username, password string) bool {
+    return c.username == username && c.password == password
+}
+
 
 func connForward(bufSize int, from, to net.Conn) {
     buf := make([]byte, bufSize)
