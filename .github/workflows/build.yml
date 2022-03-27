@@ -1,0 +1,65 @@
+name: Build
+on:
+  workflow_dispatch:
+
+jobs:
+  linuxAmd64Build:
+    name: Build Linux amd64 Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setting up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Building Linux amd64 Version
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o WireProxy_amd64 -v main.go
+          mkdir release_linux_amd64
+          mv WireProxy_amd64 wireproxy
+          cp wireproxy release_linux_amd64/wireproxy
+      - name: Upload Linux amd64 Version
+        uses: actions/upload-artifact@v1
+        with:
+          name: WireProxy_linux_amd64
+          path: release_linux_amd64
+  linuxArm64Build:
+    name: Build Linux arm64 Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setting up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Building Linux arm64 Version
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o WireProxy_arm64 -v main.go
+          mkdir release_linux_arm64
+          mv WireProxy_arm64 wireproxy
+          cp wireproxy release_linux_arm64/wireproxy
+      - name: Upload Linux arm64 Version
+        uses: actions/upload-artifact@v1
+        with:
+          name: WireProxy_linux_arm64
+          path: release_linux_arm64
+  linuxS390xBuild:
+    name: Build Linux s390x Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setting up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Building Linux s390x Version
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=s390x go build -o WireProxy_s390x -v main.go
+          mkdir release_linux_s390x
+          mv WireProxy_s390x wireproxy
+          cp wireproxy release_linux_s390x/wireproxy
+      - name: Upload Linux s390x Version
+        uses: actions/upload-artifact@v1
+        with:
+          name: WireProxy_linux_s390x
+          path: release_linux_s390x
