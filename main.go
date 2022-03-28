@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net"
@@ -266,17 +267,10 @@ func (c CredentialValidator) Valid(username, password string) bool {
 
 func connForward(bufSize int, from, to net.Conn) {
 	buf := make([]byte, bufSize)
-	for {
-		size, err := from.Read(buf)
-		if err != nil {
-			to.Close()
-			return
-		}
-		_, err = to.Write(buf[:size])
-		if err != nil {
-			to.Close()
-			return
-		}
+	_, err := io.CopyBuffer(to, from, buf)
+	if err != nil {
+		to.Close()
+		return
 	}
 }
 
