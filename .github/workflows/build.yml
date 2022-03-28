@@ -22,7 +22,7 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: WireProxy_windows_amd64
-          path: release_linux_amd64
+          path: release_windows_amd64
   linuxAmd64Build:
     name: Build Linux amd64 Version
     runs-on: ubuntu-latest
