@@ -40,10 +40,8 @@ type Socks5Config struct {
 }
 
 type Configuration struct {
-	Device           *DeviceConfig
-	TCPClientTunnels []TCPClientTunnelConfig
-	TCPServerTunnels []TCPServerTunnelConfig
-	Socks5Proxies    []Socks5Config
+	Device   *DeviceConfig
+	Routines []RoutineSpawner
 }
 
 func parseString(section *ini.Section, keyName string) (string, error) {
@@ -329,25 +327,34 @@ func ParseConfig(path string) (*Configuration, error) {
 		return nil, err
 	}
 
+	routinesSpawners := []RoutineSpawner{}
+
 	tcpClientTunnels, err := ParseTCPClientTunnelConfig(cfg)
 	if err != nil {
 		return nil, err
+	}
+	for _, i := range tcpClientTunnels {
+		routinesSpawners = append(routinesSpawners, &i)
 	}
 
 	tcpServerTunnels, err := ParseTCPServerTunnelConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
+	for _, i := range tcpServerTunnels {
+		routinesSpawners = append(routinesSpawners, &i)
+	}
 
 	socks5Proxies, err := ParseSocks5Config(cfg)
 	if err != nil {
 		return nil, err
 	}
+	for _, i := range socks5Proxies {
+		routinesSpawners = append(routinesSpawners, &i)
+	}
 
 	return &Configuration{
-		Device:           device,
-		TCPClientTunnels: tcpClientTunnels,
-		TCPServerTunnels: tcpServerTunnels,
-		Socks5Proxies:    socks5Proxies,
+		Device:   device,
+		Routines: routinesSpawners,
 	}, nil
 }
