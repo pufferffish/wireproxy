@@ -32,6 +32,7 @@ type DeviceSetting struct {
 	ipcRequest string
 	dns        []netip.Addr
 	deviceAddr *netip.Addr
+	mtu        int
 }
 
 type NetstackDNSResolver struct {
@@ -220,6 +221,17 @@ func createIPCRequest(conf Configuration) (*DeviceSetting, error) {
 		}
 	}
 
+	mtu := int64(1420)
+	if mtuOpt, ok := root["mtu"]; ok {
+		mtu, err = strconv.ParseInt(mtuOpt, 10, 0)
+		if err != nil {
+			return nil, err
+		}
+		if mtu < 0 {
+			mtu = 0
+		}
+	}
+
 	request := fmt.Sprintf(`private_key=%s
 public_key=%s
 endpoint=%s
@@ -227,7 +239,7 @@ persistent_keepalive_interval=%d
 preshared_key=%s
 allowed_ip=0.0.0.0/0`, selfSK, peerPK, peerEndpoint, keepAlive, preSharedKey)
 
-	setting := &DeviceSetting{ipcRequest: request, dns: dns, deviceAddr: &selfEndpoint}
+	setting := &DeviceSetting{ipcRequest: request, dns: dns, deviceAddr: &selfEndpoint, mtu: int(mtu)}
 	return setting, nil
 }
 
@@ -366,7 +378,7 @@ func tcpServerRoutine(config map[string]string) (func(*netstack.Net), error) {
 }
 
 func startWireguard(setting *DeviceSetting) (*netstack.Net, error) {
-	tun, tnet, err := netstack.CreateNetTUN([]netip.Addr{*(setting.deviceAddr)}, setting.dns, 1420)
+	tun, tnet, err := netstack.CreateNetTUN([]netip.Addr{*(setting.deviceAddr)}, setting.dns, setting.mtu)
 	if err != nil {
 		return nil, err
 	}
