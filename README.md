@@ -50,6 +50,9 @@ DNS = 1.1.1.1
 # If you don't know what this is, then you probably don't need it.
 #PreSharedKey = UItQuvLsyh50ucXHfjF0bbR4IIpVBd74lwKc8uIPXXs=
 
+# MTU is the maximum transmission unit size, By default this is set to 1420.
+# MTU = 1234
+
 # TCPClientTunnel is a tunnel listening on your machine,
 # and it forwards any TCP traffic received to the specified target via wireguard.
 # Flow:
