@@ -3,6 +3,7 @@ module github.com/octeep/wireproxy
 go 1.17
 
 require (
+	github.com/go-ini/ini v1.66.4
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	golang.zx2c4.com/go118/netip v0.0.0-20211111135330-a4a02eeacf9d
