@@ -85,18 +85,15 @@ func parseBase64KeyToHex(section *ini.Section, keyName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	println(keyName)
-	println(key)
-	result, err := EncodeBase64ToHex(key)
+	result, err := encodeBase64ToHex(key)
 	if err != nil {
-		println(keyName)
 		return result, err
 	}
 
 	return result, nil
 }
 
-func EncodeBase64ToHex(key string) (string, error) {
+func encodeBase64ToHex(key string) (string, error) {
 	decoded, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
 		return "", errors.New("invalid base64 string: " + key)
@@ -125,6 +122,23 @@ func parseCommaSeperatedNetIP(section *ini.Section, keyName string) ([]netip.Add
 	return ips, nil
 }
 
+func resolveIP(ip string) (*net.IPAddr, error) {
+	return net.ResolveIPAddr("ip", ip)
+}
+
+func resolveIPPAndPort(addr string) (string, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", err
+	}
+
+	ip, err := resolveIP(host)
+	if err != nil {
+		return "", err
+	}
+	return net.JoinHostPort(ip.String(), port), nil
+}
+
 func ParseDeviceConfig(cfg *ini.File) (*DeviceConfig, error) {
 	config := &DeviceConfig{
 		PreSharedKey: "0000000000000000000000000000000000000000000000000000000000000000",
@@ -146,8 +160,7 @@ func ParseDeviceConfig(cfg *ini.File) (*DeviceConfig, error) {
 	config.PeerPublicKey = decoded
 
 	if sectionKey, err := section.GetKey("PreSharedKey"); err == nil {
-		println("break:")
-		value, err := EncodeBase64ToHex(sectionKey.String())
+		value, err := encodeBase64ToHex(sectionKey.String())
 		if err != nil {
 			return nil, err
 		}
@@ -171,6 +184,10 @@ func ParseDeviceConfig(cfg *ini.File) (*DeviceConfig, error) {
 	}
 
 	decoded, err = parseString(section, "PeerEndpoint")
+	if err != nil {
+		return nil, err
+	}
+	decoded, err = resolveIPPAndPort(decoded)
 	if err != nil {
 		return nil, err
 	}
