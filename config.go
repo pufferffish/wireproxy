@@ -120,6 +120,25 @@ func parseCommaSeperatedNetIP(section *ini.Section, keyName string) ([]netip.Add
 	return ips, nil
 }
 
+func parseCIDRNetIP(section *ini.Section, keyName string) (*netip.Addr, error) {
+	prefixString, err := parseString(section, keyName)
+	if err != nil {
+		return nil, err
+	}
+
+	prefix, err := netip.ParsePrefix(prefixString)
+	if err != nil {
+		return nil, err
+	}
+
+	addr := prefix.Addr()
+	if prefix.Bits() != addr.BitLen() {
+		return nil, errors.New("interface address subnet should be /32 for IPv4 and /128 for IPv6")
+	}
+
+	return &addr, nil
+}
+
 func resolveIP(ip string) (*net.IPAddr, error) {
 	return net.ResolveIPAddr("ip", ip)
 }
@@ -137,76 +156,83 @@ func resolveIPPAndPort(addr string) (string, error) {
 	return net.JoinHostPort(ip.String(), port), nil
 }
 
-func ParseDeviceConfig(cfg *ini.File) (*DeviceConfig, error) {
-	config := &DeviceConfig{
-		PreSharedKey: "0000000000000000000000000000000000000000000000000000000000000000",
-		KeepAlive:    0,
-		MTU:          1420,
+func ParseInterface(cfg *ini.File, device *DeviceConfig) error {
+	sections, err := cfg.SectionsByName("Interface")
+	if len(sections) != 1 || err != nil {
+		return errors.New("one and only one [Interface] is expected")
 	}
-	section := cfg.Section("")
+	section := sections[0]
 
-	decoded, err := parseBase64KeyToHex(section, "SelfSecretKey")
+	address, err := parseCIDRNetIP(section, "Address")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	config.SelfSecretKey = decoded
 
-	decoded, err = parseBase64KeyToHex(section, "PeerPublicKey")
+	device.SelfEndpoint = address
+
+	privKey, err := parseBase64KeyToHex(section, "PrivateKey")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	config.PeerPublicKey = decoded
+	device.SelfSecretKey = privKey
 
-	if sectionKey, err := section.GetKey("PreSharedKey"); err == nil {
-		value, err := encodeBase64ToHex(sectionKey.String())
-		if err != nil {
-			return nil, err
-		}
-		config.PreSharedKey = value
+	dns, err := parseCommaSeperatedNetIP(section, "DNS")
+	if err != nil {
+		return err
 	}
-
-	if sectionKey, err := section.GetKey("KeeyAlive"); err == nil {
-		value, err := sectionKey.Int()
-		if err != nil {
-			return nil, err
-		}
-		config.KeepAlive = value
-	}
+	device.DNS = dns
 
 	if sectionKey, err := section.GetKey("MTU"); err == nil {
 		value, err := sectionKey.Int()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		config.MTU = value
+		device.MTU = value
 	}
 
-	decoded, err = parseString(section, "PeerEndpoint")
+	return nil
+}
+
+func ParsePeer(cfg *ini.File, device *DeviceConfig) error {
+	sections, err := cfg.SectionsByName("Peer")
+	if len(sections) != 1 || err != nil {
+		return errors.New("one and only one [Peer] is expected")
+	}
+	section := sections[0]
+
+	decoded, err := parseBase64KeyToHex(section, "PublicKey")
 	if err != nil {
-		return nil, err
+		return err
+	}
+	device.PeerPublicKey = decoded
+
+	if sectionKey, err := section.GetKey("PreSharedKey"); err == nil {
+		value, err := encodeBase64ToHex(sectionKey.String())
+		if err != nil {
+			return err
+		}
+		device.PreSharedKey = value
+	}
+
+	decoded, err = parseString(section, "Endpoint")
+	if err != nil {
+		return err
 	}
 	decoded, err = resolveIPPAndPort(decoded)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	config.PeerEndpoint = decoded
+	device.PeerEndpoint = decoded
 
-	selfEndpoint, err := parseCommaSeperatedNetIP(section, "SelfEndpoint")
-	if err != nil {
-		return nil, err
+	if sectionKey, err := section.GetKey("PersistentKeepalive"); err == nil {
+		value, err := sectionKey.Int()
+		if err != nil {
+			return err
+		}
+		device.KeepAlive = value
 	}
-	if len(selfEndpoint) != 1 {
-		return nil, errors.New("SelfEndpoint must be specified with only 1 IP address")
-	}
-	config.SelfEndpoint = &selfEndpoint[0]
 
-	dns, err := parseCommaSeperatedNetIP(section, "DNS")
-	if err != nil {
-		return nil, err
-	}
-	config.DNS = dns
-
-	return config, nil
+	return nil
 }
 
 func parseTCPClientTunnelConfig(section *ini.Section) (*TCPClientTunnelConfig, error) {
@@ -322,7 +348,18 @@ func ParseConfig(path string) (*Configuration, error) {
 		return nil, err
 	}
 
-	device, err := ParseDeviceConfig(cfg)
+	device := &DeviceConfig{
+		PreSharedKey: "0000000000000000000000000000000000000000000000000000000000000000",
+		KeepAlive:    0,
+		MTU:          1420,
+	}
+
+	err = ParseInterface(cfg, device)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ParsePeer(cfg, device)
 	if err != nil {
 		return nil, err
 	}
