@@ -1,22 +1,11 @@
-# SelfSecretKey is the secret key of your wireguard peer
-SelfSecretKey = ###Interface - PrivateKey###
-# SelfEndpoint is the IP of your wireguard peer
-SelfEndpoint = ###Interface - Address###
-# DNS is the nameservers that will be used by wireproxy.
-# Multple nameservers can be specified as such: DNS = 1.1.1.1, 1.0.0.1
+[Interface]
+Address = ###Interface - Address###
+PrivateKey = ###Interface - PrivateKey###
 DNS = ###Interface - DNS###
 
-# PeerPublicKey is the public key of the wireguard server you want to connec to
-PeerPublicKey = ###Peer - PublicKey###
-# PeerEndpoint is the endpoint of the wireguard server you want to connec to
-PeerEndpoint =  ###Peer - Endpoint###
-
-# KeepAlive is the persistent keep alive interval of the wireguard device
-# usually not needed
-# KeepAlive = 25
-# PreSharedKey is the pre shared key of your wireguard device
-# if you don't know what this is you don't need it
-# PreSharedKey = 
+[Peer]
+PublicKey = ###Peer - PublicKey###
+Endpoint = ###Peer - Endpoint###
 
 # Socks5 create a socks5 proxy on your LAN, and any traffic would be routed via wireguard
 [Socks5]

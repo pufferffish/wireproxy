@@ -23,35 +23,21 @@ anything.
 
 # Sample config file
 ```
-# SelfSecretKey is the secret key of your wireguard peer.
-# This should be the same as the PrivateKey in your `client.conf` wireguard setting.
-SelfSecretKey = uCTIK+56CPyCvwJxmU5dBfuyJvPuSXAq1FzHdnIxe1Q=
+# The [Interface] and [Peer] configurations follow the same sematics and meaning
+# of a wg-quick configuration. To understand what these fields mean, please refer to:
+# https://wiki.archlinux.org/title/WireGuard#Persistent_configuration
+# https://www.wireguard.com/#simple-network-interface
+[Interface]
+Address = 10.200.200.2/32
+MTU = 1420
+PrivateKey = uCTIK+56CPyCvwJxmU5dBfuyJvPuSXAq1FzHdnIxe1Q=
+DNS = 10.200.200.1
 
-# SelfEndpoint is the IP of your wireguard peer.
-SelfEndpoint = 172.16.31.2
-
-# PeerPublicKey is the public key of the wireguard server you want to connect to.
-PeerPublicKey = QP+A67Z2UBrMgvNIdHv8gPel5URWNLS4B3ZQ2hQIZlg=
-
-# PeerEndpoint is the endpoint of the wireguard server you want to connect to.
-PeerEndpoint = 172.16.0.1:53
-
-# DNS is the list of nameservers that will be used by wireproxy.
-# For just a single nameserver:
-DNS = 1.1.1.1
-# For multiple nameservers:
-#DNS = 1.1.1.1, 1.0.0.1
-
-# KeepAlive is the persistent keep alive interval of the wireguard device.
-# Usually not needed.
-#KeepAlive = 25
-
-# PreSharedKey is the pre shared key of your wireguard device
-# If you don't know what this is, then you probably don't need it.
-#PreSharedKey = UItQuvLsyh50ucXHfjF0bbR4IIpVBd74lwKc8uIPXXs=
-
-# MTU is the maximum transmission unit size, By default this is set to 1420.
-# MTU = 1234
+[Peer]
+PublicKey = QP+A67Z2UBrMgvNIdHv8gPel5URWNLS4B3ZQ2hQIZlg=
+PresharedKey = UItQuvLsyh50ucXHfjF0bbR4IIpVBd74lwKc8uIPXXs=
+Endpoint = my.ddns.example.com:51820
+PersistentKeepalive = 25
 
 # TCPClientTunnel is a tunnel listening on your machine,
 # and it forwards any TCP traffic received to the specified target via wireguard.
