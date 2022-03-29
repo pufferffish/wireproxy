@@ -16,6 +16,10 @@ and configured my browser to use wireproxy for certain sites. It's pretty useful
 wireproxy is completely isolated from my network interfaces, and I don't need root to configure
 anything.
 
+# Feature
+- TCP static routing for client and server
+- SOCKS5 proxy (currently only CONNECT is supported) 
+
 # Usage
 ```
 ./wireproxy [path to config]
@@ -28,16 +32,16 @@ anything.
 # https://wiki.archlinux.org/title/WireGuard#Persistent_configuration
 # https://www.wireguard.com/#simple-network-interface
 [Interface]
-Address = 10.200.200.2/32
-MTU = 1420
+Address = 10.200.200.2/32 # The subnet should be /32 and /128 for IPv4 and v6 respectively
+# MTU = 1420 (optional)
 PrivateKey = uCTIK+56CPyCvwJxmU5dBfuyJvPuSXAq1FzHdnIxe1Q=
 DNS = 10.200.200.1
 
 [Peer]
 PublicKey = QP+A67Z2UBrMgvNIdHv8gPel5URWNLS4B3ZQ2hQIZlg=
-PresharedKey = UItQuvLsyh50ucXHfjF0bbR4IIpVBd74lwKc8uIPXXs=
+# PresharedKey = UItQuvLsyh50ucXHfjF0bbR4IIpVBd74lwKc8uIPXXs= (optinal)
 Endpoint = my.ddns.example.com:51820
-PersistentKeepalive = 25
+# PersistentKeepalive = 25 (optinal)
 
 # TCPClientTunnel is a tunnel listening on your machine,
 # and it forwards any TCP traffic received to the specified target via wireguard.
