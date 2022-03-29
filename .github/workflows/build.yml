@@ -1,6 +1,11 @@
 name: Build
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
 
 jobs:
   windowsAmd64Build:
@@ -14,7 +19,7 @@ jobs:
           go-version: 1.17
       - name: Building Windows amd64 Version
         run: |
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o WireProxy_amd64.exe -v main.go
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o WireProxy_amd64.exe -v ./cmd/wireproxy
           mkdir release_windows_amd64
           mv WireProxy_amd64.exe wireproxy.exe
           cp wireproxy.exe release_windows_amd64/wireproxy.exe
@@ -34,7 +39,7 @@ jobs:
           go-version: 1.17
       - name: Building Linux amd64 Version
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o WireProxy_amd64 -v main.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o WireProxy_amd64 -v ./cmd/wireproxy
           mkdir release_linux_amd64
           mv WireProxy_amd64 wireproxy
           cp wireproxy release_linux_amd64/wireproxy
@@ -54,7 +59,7 @@ jobs:
           go-version: 1.17
       - name: Building Linux arm64 Version
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o WireProxy_arm64 -v main.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o WireProxy_arm64 -v ./cmd/wireproxy
           mkdir release_linux_arm64
           mv WireProxy_arm64 wireproxy
           cp wireproxy release_linux_arm64/wireproxy
@@ -74,7 +79,7 @@ jobs:
           go-version: 1.17
       - name: Building Linux s390x Version
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=s390x go build -o WireProxy_s390x -v main.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=s390x go build -o WireProxy_s390x -v ./cmd/wireproxy
           mkdir release_linux_s390x
           mv WireProxy_s390x wireproxy
           cp wireproxy release_linux_s390x/wireproxy
