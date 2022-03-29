@@ -65,3 +65,8 @@ BindAddress = 127.0.0.1:25344
 # Avoid using spaces in the password field
 #Password = ...
 ```
+
+
+## Stargazers over time
+
+[![Stargazers over time](https://starchart.cc/octeep/wireproxy.svg)](https://starchart.cc/octeep/wireproxy)
