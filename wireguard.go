@@ -39,7 +39,11 @@ func StartWireguard(conf *DeviceConfig) (*netstack.Net, error) {
 		return nil, err
 	}
 	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, ""))
-	dev.IpcSet(setting.ipcRequest)
+	err = dev.IpcSet(setting.ipcRequest)
+	if err != nil {
+		return nil, err
+	}
+
 	err = dev.Up()
 	if err != nil {
 		return nil, err
