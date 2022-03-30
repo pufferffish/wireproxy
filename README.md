@@ -27,14 +27,17 @@ anything.
 
 ```
 usage: wireproxy [-h|--help] -c|--config "<value>" [-d|--daemon]
+                 [-n|--configtest]
 
                  Userspace wireguard client for proxying
 
 Arguments:
 
-  -h  --help    Print help information
-  -c  --config  Path of configuration file
-  -d  --daemon  Make wireproxy run in background
+  -h  --help        Print help information
+  -c  --config      Path of configuration file
+  -d  --daemon      Make wireproxy run in background
+  -n  --configtest  Configtest mode. Only check the configuration file for
+                    validity.
 ```
 
 # Sample config file
