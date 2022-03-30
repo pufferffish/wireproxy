@@ -4,17 +4,56 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 
+	"github.com/akamensky/argparse"
 	"github.com/octeep/wireproxy"
 )
 
+const daemonProcess = "daemon-process"
+
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("Usage: wireproxy [config file path]")
+	isDaemonProcess := os.Args[1] == daemonProcess
+	args := os.Args
+	if isDaemonProcess {
+		args = []string{args[0]}
+		args = append(args, os.Args[2:]...)
+	}
+
+	parser := argparse.NewParser("wireproxy", "Userspace wireguard client for proxying")
+
+	config := parser.String("c", "config", &argparse.Options{Required: true, Help: "Path of configuration file"})
+	daemon := parser.Flag("d", "daemon", &argparse.Options{Help: "Make wireproxy run in background"})
+
+	err := parser.Parse(args)
+	if err != nil {
+		fmt.Print(parser.Usage(err))
 		return
 	}
 
-	conf, err := wireproxy.ParseConfig(os.Args[1])
+	if isDaemonProcess {
+		os.Stdout, _ = os.Open(os.DevNull)
+		os.Stderr, _ = os.Open(os.DevNull)
+		*daemon = false
+	}
+
+	if *daemon {
+		programPath, err := os.Executable()
+		if err != nil {
+			programPath = args[0]
+		}
+
+		newArgs := []string{daemonProcess}
+		newArgs = append(newArgs, args[1:]...)
+		cmd := exec.Command(programPath, newArgs...)
+		err = cmd.Start()
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		return
+	}
+
+	conf, err := wireproxy.ParseConfig(*config)
 	if err != nil {
 		log.Panic(err)
 	}

@@ -22,7 +22,19 @@ anything.
 
 # Usage
 ```
-./wireproxy [path to config]
+./wireproxy -c [path to config]
+```
+
+```
+usage: wireproxy [-h|--help] -c|--config "<value>" [-d|--daemon]
+
+                 Userspace wireguard client for proxying
+
+Arguments:
+
+  -h  --help    Print help information
+  -c  --config  Path of configuration file
+  -d  --daemon  Make wireproxy run in background
 ```
 
 # Sample config file
