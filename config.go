@@ -63,7 +63,7 @@ func parsePort(section *ini.Section, keyName string) (int, error) {
 		return 0, err
 	}
 
-	if port >= 0 && port < 65536 {
+	if !(port >= 0 && port < 65536) {
 		return 0, errors.New("port should be >= 0 and < 65536")
 	}
 
