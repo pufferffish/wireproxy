@@ -12,7 +12,7 @@ import (
 type DeviceSetting struct {
 	ipcRequest string
 	dns        []netip.Addr
-	deviceAddr *netip.Addr
+	deviceAddr []netip.Addr
 	mtu        int
 }
 
@@ -34,7 +34,7 @@ func StartWireguard(conf *DeviceConfig) (*netstack.Net, error) {
 		return nil, err
 	}
 
-	tun, tnet, err := netstack.CreateNetTUN([]netip.Addr{*(setting.deviceAddr)}, setting.dns, setting.mtu)
+	tun, tnet, err := netstack.CreateNetTUN(setting.deviceAddr, setting.dns, setting.mtu)
 	if err != nil {
 		return nil, err
 	}
