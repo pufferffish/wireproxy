@@ -239,7 +239,7 @@ func ParsePeer(cfg *ini.File, device *DeviceConfig) error {
 	return nil
 }
 
-func parseTCPClientTunnelConfig(section *ini.Section) (*TCPClientTunnelConfig, error) {
+func parseTCPClientTunnelConfig(section *ini.Section) (RoutineSpawner, error) {
 	config := &TCPClientTunnelConfig{}
 	tcpAddr, err := parseTCPAddr(section, "BindAddress")
 	if err != nil {
@@ -256,25 +256,7 @@ func parseTCPClientTunnelConfig(section *ini.Section) (*TCPClientTunnelConfig, e
 	return config, nil
 }
 
-func ParseTCPClientTunnelConfig(cfg *ini.File) ([]TCPClientTunnelConfig, error) {
-	sections, err := cfg.SectionsByName("TCPClientTunnel")
-	if err != nil {
-		return []TCPClientTunnelConfig{}, nil
-	}
-
-	configs := make([]TCPClientTunnelConfig, len(sections))
-	for i, section := range sections {
-		config, err := parseTCPClientTunnelConfig(section)
-		if err != nil {
-			return nil, err
-		}
-		configs[i] = *config
-	}
-
-	return configs, nil
-}
-
-func parseTCPServerTunnelConfig(section *ini.Section) (*TCPServerTunnelConfig, error) {
+func parseTCPServerTunnelConfig(section *ini.Section) (RoutineSpawner, error) {
 	config := &TCPServerTunnelConfig{}
 
 	listenPort, err := parsePort(section, "ListenPort")
@@ -292,25 +274,7 @@ func parseTCPServerTunnelConfig(section *ini.Section) (*TCPServerTunnelConfig, e
 	return config, nil
 }
 
-func ParseTCPServerTunnelConfig(cfg *ini.File) ([]TCPServerTunnelConfig, error) {
-	sections, err := cfg.SectionsByName("TCPServerTunnel")
-	if err != nil {
-		return []TCPServerTunnelConfig{}, nil
-	}
-
-	configs := make([]TCPServerTunnelConfig, len(sections))
-	for i, section := range sections {
-		config, err := parseTCPServerTunnelConfig(section)
-		if err != nil {
-			return nil, err
-		}
-		configs[i] = *config
-	}
-
-	return configs, nil
-}
-
-func parseSocks5Config(section *ini.Section) (*Socks5Config, error) {
+func parseSocks5Config(section *ini.Section) (RoutineSpawner, error) {
 	config := &Socks5Config{}
 
 	bindAddress, err := parseString(section, "BindAddress")
@@ -328,22 +292,22 @@ func parseSocks5Config(section *ini.Section) (*Socks5Config, error) {
 	return config, nil
 }
 
-func ParseSocks5Config(cfg *ini.File) ([]Socks5Config, error) {
-	sections, err := cfg.SectionsByName("Socks5")
+func parseRoutinesConfig(routines *[]RoutineSpawner, cfg *ini.File, sectionName string, f func(*ini.Section) (RoutineSpawner, error)) error {
+	sections, err := cfg.SectionsByName(sectionName)
 	if err != nil {
-		return []Socks5Config{}, nil
+		return nil
 	}
 
-	configs := make([]Socks5Config, len(sections))
-	for i, section := range sections {
-		config, err := parseSocks5Config(section)
+	for _, section := range sections {
+		config, err := f(section)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		configs[i] = *config
+
+		*routines = append(*routines, config)
 	}
 
-	return configs, nil
+	return nil
 }
 
 func ParseConfig(path string) (*Configuration, error) {
@@ -373,28 +337,19 @@ func ParseConfig(path string) (*Configuration, error) {
 
 	routinesSpawners := []RoutineSpawner{}
 
-	tcpClientTunnels, err := ParseTCPClientTunnelConfig(cfg)
+	err = parseRoutinesConfig(&routinesSpawners, cfg, "TCPClientTunnel", parseTCPClientTunnelConfig)
 	if err != nil {
 		return nil, err
-	}
-	for _, i := range tcpClientTunnels {
-		routinesSpawners = append(routinesSpawners, &i)
 	}
 
-	tcpServerTunnels, err := ParseTCPServerTunnelConfig(cfg)
+	err = parseRoutinesConfig(&routinesSpawners, cfg, "TCPServerTunnel", parseTCPServerTunnelConfig)
 	if err != nil {
 		return nil, err
-	}
-	for _, i := range tcpServerTunnels {
-		routinesSpawners = append(routinesSpawners, &i)
 	}
 
-	socks5Proxies, err := ParseSocks5Config(cfg)
+	err = parseRoutinesConfig(&routinesSpawners, cfg, "Socks5", parseSocks5Config)
 	if err != nil {
 		return nil, err
-	}
-	for _, i := range socks5Proxies {
-		routinesSpawners = append(routinesSpawners, &i)
 	}
 
 	return &Configuration{
