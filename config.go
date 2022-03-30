@@ -14,7 +14,7 @@ import (
 
 type DeviceConfig struct {
 	SelfSecretKey string
-	SelfEndpoint  *netip.Addr
+	SelfEndpoint  []netip.Addr
 	PeerPublicKey string
 	PeerEndpoint  string
 	DNS           []netip.Addr
@@ -102,14 +102,14 @@ func encodeBase64ToHex(key string) (string, error) {
 	return hex.EncodeToString(decoded), nil
 }
 
-func parseCommaSeperatedNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) {
+func parseNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) {
 	key := section.Key(keyName)
 	if key == nil {
 		return []netip.Addr{}, nil
 	}
 
 	ips := []netip.Addr{}
-	for _, str := range strings.Split(key.String(), ",") {
+	for _, str := range key.StringsWithShadows(",") {
 		str = strings.TrimSpace(str)
 		ip, err := netip.ParseAddr(str)
 		if err != nil {
@@ -120,23 +120,27 @@ func parseCommaSeperatedNetIP(section *ini.Section, keyName string) ([]netip.Add
 	return ips, nil
 }
 
-func parseCIDRNetIP(section *ini.Section, keyName string) (*netip.Addr, error) {
-	prefixString, err := parseString(section, keyName)
-	if err != nil {
-		return nil, err
+func parseCIDRNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) {
+	key := section.Key(keyName)
+	if key == nil {
+		return []netip.Addr{}, nil
 	}
 
-	prefix, err := netip.ParsePrefix(prefixString)
-	if err != nil {
-		return nil, err
-	}
+	ips := []netip.Addr{}
+	for _, str := range key.StringsWithShadows(",") {
+		prefix, err := netip.ParsePrefix(str)
+		if err != nil {
+			return nil, err
+		}
 
-	addr := prefix.Addr()
-	if prefix.Bits() != addr.BitLen() {
-		return nil, errors.New("interface address subnet should be /32 for IPv4 and /128 for IPv6")
-	}
+		addr := prefix.Addr()
+		if prefix.Bits() != addr.BitLen() {
+			return nil, errors.New("interface address subnet should be /32 for IPv4 and /128 for IPv6")
+		}
 
-	return &addr, nil
+		ips = append(ips, addr)
+	}
+	return ips, nil
 }
 
 func resolveIP(ip string) (*net.IPAddr, error) {
@@ -176,7 +180,7 @@ func ParseInterface(cfg *ini.File, device *DeviceConfig) error {
 	}
 	device.SelfSecretKey = privKey
 
-	dns, err := parseCommaSeperatedNetIP(section, "DNS")
+	dns, err := parseNetIP(section, "DNS")
 	if err != nil {
 		return err
 	}
@@ -343,7 +347,10 @@ func ParseSocks5Config(cfg *ini.File) ([]Socks5Config, error) {
 }
 
 func ParseConfig(path string) (*Configuration, error) {
-	cfg, err := ini.InsensitiveLoad(path)
+	cfg, err := ini.LoadSources(ini.LoadOptions{
+		Insensitive:  true,
+		AllowShadows: true,
+	}, path)
 	if err != nil {
 		return nil, err
 	}
