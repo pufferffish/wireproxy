@@ -40,6 +40,13 @@ Arguments:
                     validity.
 ```
 
+# Build instruction
+```
+git clone https://github.com/octeep/wireproxy
+cd wireproxy
+go build ./cmd/wireproxy
+```
+
 # Sample config file
 ```
 # The [Interface] and [Peer] configurations follow the same sematics and meaning
