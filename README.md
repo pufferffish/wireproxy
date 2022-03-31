@@ -54,9 +54,9 @@ DNS = 10.200.200.1
 
 [Peer]
 PublicKey = QP+A67Z2UBrMgvNIdHv8gPel5URWNLS4B3ZQ2hQIZlg=
-# PresharedKey = UItQuvLsyh50ucXHfjF0bbR4IIpVBd74lwKc8uIPXXs= (optinal)
+# PresharedKey = UItQuvLsyh50ucXHfjF0bbR4IIpVBd74lwKc8uIPXXs= (optional)
 Endpoint = my.ddns.example.com:51820
-# PersistentKeepalive = 25 (optinal)
+# PersistentKeepalive = 25 (optional)
 
 # TCPClientTunnel is a tunnel listening on your machine,
 # and it forwards any TCP traffic received to the specified target via wireguard.

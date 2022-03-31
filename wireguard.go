@@ -28,7 +28,7 @@ allowed_ip=0.0.0.0/0`, conf.SelfSecretKey, conf.PeerPublicKey, conf.PeerEndpoint
 	return setting, nil
 }
 
-func StartWireguard(conf *DeviceConfig) (*netstack.Net, error) {
+func StartWireguard(conf *DeviceConfig) (*VirtualTun, error) {
 	setting, err := createIPCRequest(conf)
 	if err != nil {
 		return nil, err
@@ -49,5 +49,8 @@ func StartWireguard(conf *DeviceConfig) (*netstack.Net, error) {
 		return nil, err
 	}
 
-	return tnet, nil
+	return &VirtualTun{
+		tnet:      tnet,
+		systemDNS: len(setting.dns) == 0,
+	}, nil
 }
