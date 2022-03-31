@@ -27,7 +27,7 @@ jobs:
       - name: Set up GoReleaser
         uses: actions/setup-go@v2
         with:
-          go-version: "1.18"
+          go-version: "1.17"
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
@@ -36,8 +36,8 @@ jobs:
           workdir: ${{ env.workdir }}
           version: latest
           args: release --rm-dist
-          
-      - name: Release binaries 
+
+      - name: Release binaries
         uses: softprops/action-gh-release@v1
         with:
           tag_name: wireproxy
