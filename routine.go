@@ -4,11 +4,11 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 
 	"github.com/armon/go-socks5"
@@ -17,20 +17,28 @@ import (
 	"golang.zx2c4.com/wireguard/tun/netstack"
 )
 
+// errorLogger is the logger to print error message
+var errorLogger = log.New(os.Stderr, "ERROR: ", log.LstdFlags)
+
+// CredentialValidator stores the authentication data of a socks5 proxy
 type CredentialValidator struct {
 	username string
 	password string
 }
 
+// VirtualTun stores a reference to netstack network and DNS configuration
 type VirtualTun struct {
 	tnet      *netstack.Net
 	systemDNS bool
 }
 
+// RoutineSpawner spawns a routine (e.g. socks5, tcp static routes) after the configuration is parsed
 type RoutineSpawner interface {
 	SpawnRoutine(vt *VirtualTun)
 }
 
+// LookupAddr lookups a hostname.
+// DNS traffic may or may not be routed depending on VirtualTun's setting
 func (d VirtualTun) LookupAddr(ctx context.Context, name string) ([]string, error) {
 	if d.systemDNS {
 		return net.DefaultResolver.LookupHost(ctx, name)
@@ -39,23 +47,15 @@ func (d VirtualTun) LookupAddr(ctx context.Context, name string) ([]string, erro
 	}
 }
 
+// ResolveAddrPort resolves a hostname and returns an AddrPort.
+// DNS traffic may or may not be routed depending on VirtualTun's setting
 func (d VirtualTun) ResolveAddrPort(saddr string) (*netip.AddrPort, error) {
 	name, sport, err := net.SplitHostPort(saddr)
 	if err != nil {
 		return nil, err
 	}
 
-	addrs, err := d.LookupAddr(context.Background(), name)
-	if err != nil {
-		return nil, err
-	}
-
-	size := len(addrs)
-	if size == 0 {
-		return nil, errors.New("no address found for: " + name)
-	}
-
-	addr, err := netip.ParseAddr(addrs[rand.Intn(size)])
+	addr, err := d.ResolveAddrWithContext(context.Background(), name)
 	if err != nil {
 		return nil, err
 	}
@@ -65,34 +65,54 @@ func (d VirtualTun) ResolveAddrPort(saddr string) (*netip.AddrPort, error) {
 		return nil, &net.OpError{Op: "dial", Err: errors.New("port must be numeric")}
 	}
 
-	addrPort := netip.AddrPortFrom(addr, uint16(port))
+	addrPort := netip.AddrPortFrom(*addr, uint16(port))
 	return &addrPort, nil
 }
 
-func (d VirtualTun) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
-	var addrs []string
-	var err error
-
-	addrs, err = d.LookupAddr(ctx, name)
-
+// ResolveAddrPort resolves a hostname and returns an AddrPort.
+// DNS traffic may or may not be routed depending on VirtualTun's setting
+func (d VirtualTun) ResolveAddrWithContext(ctx context.Context, name string) (*netip.Addr, error) {
+	addrs, err := d.LookupAddr(ctx, name)
 	if err != nil {
-		return ctx, nil, err
+		return nil, err
 	}
 
 	size := len(addrs)
 	if size == 0 {
-		return ctx, nil, errors.New("no address found for: " + name)
+		return nil, errors.New("no address found for: " + name)
 	}
 
-	addr := addrs[rand.Intn(size)]
-	ip := net.ParseIP(addr)
-	if ip == nil {
-		return ctx, nil, errors.New("invalid address: " + addr)
+	rand.Shuffle(size, func(i, j int) {
+		addrs[i], addrs[j] = addrs[j], addrs[i]
+	})
+
+	var addr netip.Addr
+	for _, saddr := range addrs {
+		addr, err = netip.ParseAddr(saddr)
+		if err == nil {
+			break
+		}
 	}
 
-	return ctx, ip, err
+	if err != nil {
+		return nil, err
+	}
+
+	return &addr, nil
 }
 
+// ResolveAddrPort resolves a hostname and returns an IP.
+// DNS traffic may or may not be routed depending on VirtualTun's setting
+func (d VirtualTun) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
+	addr, err := d.ResolveAddrWithContext(ctx, name)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return ctx, addr.AsSlice(), nil
+}
+
+// Spawns a socks5 server.
 func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
 	conf := &socks5.Config{Dial: vt.tnet.DialContext, Resolver: vt}
 	if username := config.Username; username != "" {
@@ -110,25 +130,30 @@ func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
 	}
 }
 
+// Valid checks the authentication data in CredentialValidator and compare them
+// to username and password in constant time.
 func (c CredentialValidator) Valid(username, password string) bool {
 	u := subtle.ConstantTimeCompare([]byte(c.username), []byte(username))
 	p := subtle.ConstantTimeCompare([]byte(c.password), []byte(password))
 	return u&p == 1
 }
 
+// connForward copy data from `from` to `to`, then close both stream.
 func connForward(bufSize int, from io.ReadWriteCloser, to io.ReadWriteCloser) {
 	buf := make([]byte, bufSize)
 	_, err := io.CopyBuffer(to, from, buf)
 	if err != nil {
-		to.Close()
-		return
+		errorLogger.Printf("Cannot forward traffic: %s\n", err.Error())
 	}
+	_ = from.Close()
+	_ = to.Close()
 }
 
+// tcpClientForward starts a new connection via wireguard and forward traffic from `conn`
 func tcpClientForward(tnet *netstack.Net, target *net.TCPAddr, conn net.Conn) {
 	sconn, err := tnet.DialTCP(target)
 	if err != nil {
-		fmt.Printf("[ERROR] TCP Client Tunnel to %s: %s\n", target, err.Error())
+		errorLogger.Printf("TCP Client Tunnel to %s: %s\n", target, err.Error())
 		return
 	}
 
@@ -136,6 +161,7 @@ func tcpClientForward(tnet *netstack.Net, target *net.TCPAddr, conn net.Conn) {
 	go connForward(1024, conn, sconn)
 }
 
+// Spawns a local TCP server which acts as a proxy to the specified target
 func (conf *TCPClientTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	raddr, err := vt.ResolveAddrPort(conf.Target)
 	if err != nil {
@@ -157,10 +183,11 @@ func (conf *TCPClientTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	}
 }
 
+// tcpServerForward starts a new connection locally and forward traffic from `conn`
 func tcpServerForward(target *net.TCPAddr, conn net.Conn) {
 	sconn, err := net.DialTCP("tcp", nil, target)
 	if err != nil {
-		fmt.Printf("[ERROR] TCP Server Tunnel to %s: %s\n", target, err.Error())
+		errorLogger.Printf("TCP Server Tunnel to %s: %s\n", target, err.Error())
 		return
 	}
 
@@ -168,6 +195,7 @@ func tcpServerForward(target *net.TCPAddr, conn net.Conn) {
 	go connForward(1024, conn, sconn)
 }
 
+// Spawns a TCP server on wireguard which acts as a proxy to the specified target
 func (conf *TCPServerTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	raddr, err := vt.ResolveAddrPort(conf.Target)
 	if err != nil {
