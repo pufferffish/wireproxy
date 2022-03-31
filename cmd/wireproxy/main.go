@@ -8,18 +8,29 @@ import (
 
 	"github.com/akamensky/argparse"
 	"github.com/octeep/wireproxy"
+	"suah.dev/protect"
 )
 
 const daemonProcess = "daemon-process"
 
+func pledgeOrPanic(promises string) {
+	err := protect.Pledge(promises)
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
 func main() {
+	pledgeOrPanic("stdio rpath inet dns proc exec")
+
 	isDaemonProcess := len(os.Args) > 1 && os.Args[1] == daemonProcess
 	args := os.Args
 	if isDaemonProcess {
+		// remove proc and exec if they are not needed
+		pledgeOrPanic("stdio rpath inet dns")
 		args = []string{args[0]}
 		args = append(args, os.Args[2:]...)
 	}
-
 	parser := argparse.NewParser("wireproxy", "Userspace wireguard client for proxying")
 
 	config := parser.String("c", "config", &argparse.Options{Required: true, Help: "Path of configuration file"})
@@ -30,6 +41,11 @@ func main() {
 	if err != nil {
 		fmt.Print(parser.Usage(err))
 		return
+	}
+
+	if !*daemon {
+		// remove proc and exec if they are not needed
+		pledgeOrPanic("stdio rpath inet dns")
 	}
 
 	conf, err := wireproxy.ParseConfig(*config)
@@ -63,6 +79,9 @@ func main() {
 		}
 		return
 	}
+
+	// no file access is allowed from now on
+	pledgeOrPanic("stdio inet dns")
 
 	tnet, err := wireproxy.StartWireguard(conf.Device)
 	if err != nil {
