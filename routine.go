@@ -2,6 +2,7 @@ package wireproxy
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -110,7 +111,9 @@ func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
 }
 
 func (c CredentialValidator) Valid(username, password string) bool {
-	return c.username == username && c.password == password
+	u := subtle.ConstantTimeCompare([]byte(c.username), []byte(username))
+	p := subtle.ConstantTimeCompare([]byte(c.password), []byte(password))
+	return u&p == 1
 }
 
 func connForward(bufSize int, from io.ReadWriteCloser, to io.ReadWriteCloser) {
