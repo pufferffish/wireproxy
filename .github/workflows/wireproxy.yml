@@ -2,6 +2,9 @@ name: Cross compile WirePorxy
 
 on:
   workflow_dispatch:
+  create:
+     tags:
+       - v*
 
 jobs:
   WirePorxy:
