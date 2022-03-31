@@ -311,10 +311,12 @@ func parseRoutinesConfig(routines *[]RoutineSpawner, cfg *ini.File, sectionName 
 }
 
 func ParseConfig(path string) (*Configuration, error) {
-	cfg, err := ini.LoadSources(ini.LoadOptions{
+	iniOpt := ini.LoadOptions{
 		Insensitive:  true,
 		AllowShadows: true,
-	}, path)
+	}
+
+	cfg, err := ini.LoadSources(iniOpt, path)
 	if err != nil {
 		return nil, err
 	}
@@ -325,12 +327,22 @@ func ParseConfig(path string) (*Configuration, error) {
 		MTU:          1420,
 	}
 
-	err = ParseInterface(cfg, device)
+	root := cfg.Section("")
+	wgConf, err := root.GetKey("WGConfig")
+	wgCfg := cfg
+	if err == nil {
+		wgCfg, err = ini.LoadSources(iniOpt, wgConf.String())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = ParseInterface(wgCfg, device)
 	if err != nil {
 		return nil, err
 	}
 
-	err = ParsePeer(cfg, device)
+	err = ParsePeer(wgCfg, device)
 	if err != nil {
 		return nil, err
 	}
