@@ -9,6 +9,7 @@ import (
 	"golang.zx2c4.com/wireguard/tun/netstack"
 )
 
+// DeviceSetting contains the parameters for setting up a tun interface
 type DeviceSetting struct {
 	ipcRequest string
 	dns        []netip.Addr
@@ -16,6 +17,7 @@ type DeviceSetting struct {
 	mtu        int
 }
 
+// serialize the config into an IPC request and DeviceSetting
 func createIPCRequest(conf *DeviceConfig) (*DeviceSetting, error) {
 	request := fmt.Sprintf(`private_key=%s
 public_key=%s
@@ -28,6 +30,7 @@ allowed_ip=0.0.0.0/0`, conf.SelfSecretKey, conf.PeerPublicKey, conf.PeerEndpoint
 	return setting, nil
 }
 
+// StartWireguard creates a tun interface on netstack given a configuration
 func StartWireguard(conf *DeviceConfig) (*VirtualTun, error) {
 	setting, err := createIPCRequest(conf)
 	if err != nil {

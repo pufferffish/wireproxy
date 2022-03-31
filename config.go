@@ -12,6 +12,7 @@ import (
 	"golang.zx2c4.com/go118/netip"
 )
 
+// DeviceConfig contains the information to initiate a wireguard connection
 type DeviceConfig struct {
 	SelfSecretKey string
 	SelfEndpoint  []netip.Addr
@@ -160,6 +161,7 @@ func resolveIPPAndPort(addr string) (string, error) {
 	return net.JoinHostPort(ip.String(), port), nil
 }
 
+// ParseInterface parses the [Interface] section and extract the information into `device`
 func ParseInterface(cfg *ini.File, device *DeviceConfig) error {
 	sections, err := cfg.SectionsByName("Interface")
 	if len(sections) != 1 || err != nil {
@@ -197,6 +199,7 @@ func ParseInterface(cfg *ini.File, device *DeviceConfig) error {
 	return nil
 }
 
+// ParsePeer parses the [Peer] section and extract the information into `device`
 func ParsePeer(cfg *ini.File, device *DeviceConfig) error {
 	sections, err := cfg.SectionsByName("Peer")
 	if len(sections) != 1 || err != nil {
@@ -292,6 +295,8 @@ func parseSocks5Config(section *ini.Section) (RoutineSpawner, error) {
 	return config, nil
 }
 
+// Takes a function that parses an individual section into a config, and apply it on all
+// specified sections
 func parseRoutinesConfig(routines *[]RoutineSpawner, cfg *ini.File, sectionName string, f func(*ini.Section) (RoutineSpawner, error)) error {
 	sections, err := cfg.SectionsByName(sectionName)
 	if err != nil {
@@ -310,6 +315,7 @@ func parseRoutinesConfig(routines *[]RoutineSpawner, cfg *ini.File, sectionName 
 	return nil
 }
 
+// ParseConfig takes the path of a configuration file and parses it into Configuration
 func ParseConfig(path string) (*Configuration, error) {
 	iniOpt := ini.LoadOptions{
 		Insensitive:  true,
