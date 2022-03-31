@@ -49,7 +49,7 @@ go build ./cmd/wireproxy
 
 # Sample config file
 ```
-# The [Interface] and [Peer] configurations follow the same sematics and meaning
+# The [Interface] and [Peer] configurations follow the same semantics and meaning
 # of a wg-quick configuration. To understand what these fields mean, please refer to:
 # https://wiki.archlinux.org/title/WireGuard#Persistent_configuration
 # https://www.wireguard.com/#simple-network-interface
@@ -90,6 +90,22 @@ BindAddress = 127.0.0.1:25344
 #Username = ...
 # Avoid using spaces in the password field
 #Password = ...
+```
+
+Alternatively, if you already have a wireguard config, you can import it in the
+wireproxy config file like this:
+```
+WGConfig = <path to the wireguard config>
+
+# Same semantics as above
+[TCPClientTunnel]
+...
+
+[TCPServerTunnel]
+...
+
+[Socks5]
+...
 ```
 
 
