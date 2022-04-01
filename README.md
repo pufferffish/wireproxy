@@ -1,4 +1,8 @@
 # wireproxy
+[![ISC licensed](https://img.shields.io/badge/license-ISC-blue)](./LICENSE)
+[![Build status](https://github.com/octeep/wireproxy/actions/workflows/build.yml/badge.svg)](https://github.com/octeep/wireproxy/actions)
+[![Documentation](https://img.shields.io/badge/godoc-wireproxy-blue)](https://pkg.go.dev/github.com/octeep/wireproxy)
+
 A wireguard client that exposes itself as a socks5 proxy or tunnels.
 
 # What is this
@@ -19,6 +23,10 @@ anything.
 # Feature
 - TCP static routing for client and server
 - SOCKS5 proxy (currently only CONNECT is supported) 
+
+# TODO
+- UDP Support in SOCKS5
+- UDP static routing
 
 # Usage
 ```
@@ -107,6 +115,9 @@ WGConfig = <path to the wireguard config>
 [Socks5]
 ...
 ```
+
+## Donation
+<noscript><a href="https://liberapay.com/octeep/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"></a></noscript>
 
 
 ## Stargazers over time
