@@ -24,7 +24,8 @@ public_key=%s
 endpoint=%s
 persistent_keepalive_interval=%d
 preshared_key=%s
-allowed_ip=0.0.0.0/0`, conf.SelfSecretKey, conf.PeerPublicKey, conf.PeerEndpoint, conf.KeepAlive, conf.PreSharedKey)
+allowed_ip=0.0.0.0/0
+allowed_ip=::0/0`, conf.SelfSecretKey, conf.PeerPublicKey, conf.PeerEndpoint, conf.KeepAlive, conf.PreSharedKey)
 
 	setting := &DeviceSetting{ipcRequest: request, dns: conf.DNS, deviceAddr: conf.SelfEndpoint, mtu: conf.MTU}
 	return setting, nil
