@@ -11,4 +11,4 @@ RUN apk upgrade
 COPY --from=go-build /go/wireproxy/wireproxy /usr/bin/
 
 VOLUME [ "/etc/wireproxy"]
-ENTRYPOINT [ "/usr/bin/wireproxy", "/etc/wireproxy/config" ]
+ENTRYPOINT [ "/usr/bin/wireproxy", "--config", "/etc/wireproxy/config" ]
