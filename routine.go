@@ -122,11 +122,11 @@ func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
 	}
 	server, err := socks5.New(conf)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	if err := server.ListenAndServe("tcp", config.BindAddress); err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 }
 
@@ -165,19 +165,19 @@ func tcpClientForward(tnet *netstack.Net, target *net.TCPAddr, conn net.Conn) {
 func (conf *TCPClientTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	raddr, err := vt.ResolveAddrPort(conf.Target)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 	tcpAddr := TCPAddrFromAddrPort(*raddr)
 
 	server, err := net.ListenTCP("tcp", conf.BindAddress)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	for {
 		conn, err := server.Accept()
 		if err != nil {
-			log.Panic(err)
+			log.Fatal(err)
 		}
 		go tcpClientForward(vt.tnet, tcpAddr, conn)
 	}
@@ -199,20 +199,20 @@ func tcpServerForward(target *net.TCPAddr, conn net.Conn) {
 func (conf *TCPServerTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	raddr, err := vt.ResolveAddrPort(conf.Target)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 	tcpAddr := TCPAddrFromAddrPort(*raddr)
 
 	addr := &net.TCPAddr{Port: conf.ListenPort}
 	server, err := vt.tnet.ListenTCP(addr)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	for {
 		conn, err := server.Accept()
 		if err != nil {
-			log.Panic(err)
+			log.Fatal(err)
 		}
 		go tcpServerForward(tcpAddr, conn)
 	}

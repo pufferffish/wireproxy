@@ -19,7 +19,7 @@ const daemonProcess = "daemon-process"
 func pledgeOrPanic(promises string) {
 	err := protect.Pledge(promises)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 }
 
@@ -54,7 +54,7 @@ func main() {
 
 	conf, err := wireproxy.ParseConfig(*config)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	if *configTest {
@@ -89,7 +89,7 @@ func main() {
 
 	tnet, err := wireproxy.StartWireguard(conf.Device)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	for _, spawner := range conf.Routines {
