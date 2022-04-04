@@ -23,7 +23,32 @@ func pledgeOrPanic(promises string) {
 	}
 }
 
+// attempts to unveil and panic if it fails
+// this does nothing on non-OpenBSD systems
+func unveilOrPanic(path string, flags string) {
+	err := protect.Unveil(path, flags)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+// get the executable path via syscalls or infer it from argv
+func executablePath() string {
+	programPath, err := os.Executable()
+	if err != nil {
+		return os.Args[0]
+	}
+	return programPath
+}
+
 func main() {
+	exePath := executablePath()
+	unveilOrPanic("/", "r")
+	unveilOrPanic(exePath, "x")
+	if err := protect.UnveilBlock(); err != nil {
+		log.Fatal(err)
+	}
+
 	// only allow standard stdio operation, file reading, networking, and exec
 	pledgeOrPanic("stdio rpath inet dns proc exec")
 
@@ -69,14 +94,8 @@ func main() {
 	}
 
 	if *daemon {
-		programPath, err := os.Executable()
-		if err != nil {
-			programPath = args[0]
-		}
-
-		newArgs := []string{daemonProcess}
-		newArgs = append(newArgs, args[1:]...)
-		cmd := exec.Command(programPath, newArgs...)
+		args[0] = daemonProcess
+		cmd := exec.Command(exePath, args...)
 		err = cmd.Start()
 		if err != nil {
 			fmt.Println(err.Error())
