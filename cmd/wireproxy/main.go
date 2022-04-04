@@ -45,11 +45,9 @@ func main() {
 	exePath := executablePath()
 	unveilOrPanic("/", "r")
 	unveilOrPanic(exePath, "x")
-	if err := protect.UnveilBlock(); err != nil {
-		log.Fatal(err)
-	}
 
 	// only allow standard stdio operation, file reading, networking, and exec
+	// also remove unveil permission to lock unveil
 	pledgeOrPanic("stdio rpath inet dns proc exec")
 
 	isDaemonProcess := len(os.Args) > 1 && os.Args[1] == daemonProcess
