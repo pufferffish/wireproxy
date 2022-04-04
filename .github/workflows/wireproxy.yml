@@ -1,4 +1,4 @@
-name: Cross compile WirePorxy
+name: Cross compile WireProxy
 
 on:
   workflow_dispatch:
@@ -46,4 +46,4 @@ jobs:
           tag_name: wireproxy
           files: ${{ env.workdir }}/dist/*.tar.gz
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
