@@ -39,6 +39,8 @@ jobs:
           workdir: ${{ env.workdir }}
           version: latest
           args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Release binaries
         uses: softprops/action-gh-release@v1
