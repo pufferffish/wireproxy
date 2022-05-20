@@ -13,8 +13,8 @@ import (
 
 	"github.com/armon/go-socks5"
 
-	"golang.zx2c4.com/go118/netip"
 	"golang.zx2c4.com/wireguard/tun/netstack"
+	"net/netip"
 )
 
 // errorLogger is the logger to print error message
@@ -52,7 +52,7 @@ func (d VirtualTun) LookupAddr(ctx context.Context, name string) ([]string, erro
 	}
 }
 
-// ResolveAddrPortWithContext resolves a hostname and returns an AddrPort.
+// ResolveAddrWithContext resolves a hostname and returns an AddrPort.
 // DNS traffic may or may not be routed depending on VirtualTun's setting
 func (d VirtualTun) ResolveAddrWithContext(ctx context.Context, name string) (*netip.Addr, error) {
 	addrs, err := d.LookupAddr(ctx, name)
@@ -119,7 +119,7 @@ func (d VirtualTun) resolveToAddrPort(endpoint *addressPort) (*netip.AddrPort, e
 	return &addrPort, nil
 }
 
-// Spawns a socks5 server.
+// SpawnRoutine spawns a socks5 server.
 func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
 	conf := &socks5.Config{Dial: vt.tnet.DialContext, Resolver: vt}
 	if username := config.Username; username != "" {
@@ -176,7 +176,7 @@ func tcpClientForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 	go connForward(1024, conn, sconn)
 }
 
-// Spawns a local TCP server which acts as a proxy to the specified target
+// SpawnRoutine spawns a local TCP server which acts as a proxy to the specified target
 func (conf *TCPClientTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	raddr, err := parseAddressPort(conf.Target)
 	if err != nil {
@@ -217,7 +217,7 @@ func tcpServerForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 	go connForward(1024, conn, sconn)
 }
 
-// Spawns a TCP server on wireguard which acts as a proxy to the specified target
+// SpawnRoutine spawns a TCP server on wireguard which acts as a proxy to the specified target
 func (conf *TCPServerTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	raddr, err := parseAddressPort(conf.Target)
 	if err != nil {
