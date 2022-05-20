@@ -3,10 +3,10 @@ package wireproxy
 import (
 	"fmt"
 
-	"golang.zx2c4.com/go118/netip"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun/netstack"
+	"net/netip"
 )
 
 // DeviceSetting contains the parameters for setting up a tun interface

@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-ini/ini"
 
-	"golang.zx2c4.com/go118/netip"
+	"net/netip"
 )
 
 // DeviceConfig contains the information to initiate a wireguard connection
@@ -109,7 +109,7 @@ func parseNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) {
 		return []netip.Addr{}, nil
 	}
 
-	ips := []netip.Addr{}
+	var ips []netip.Addr
 	for _, str := range key.StringsWithShadows(",") {
 		str = strings.TrimSpace(str)
 		ip, err := netip.ParseAddr(str)
@@ -127,7 +127,7 @@ func parseCIDRNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) 
 		return []netip.Addr{}, nil
 	}
 
-	ips := []netip.Addr{}
+	var ips []netip.Addr
 	for _, str := range key.StringsWithShadows(",") {
 		prefix, err := netip.ParsePrefix(str)
 		if err != nil {
@@ -353,7 +353,7 @@ func ParseConfig(path string) (*Configuration, error) {
 		return nil, err
 	}
 
-	routinesSpawners := []RoutineSpawner{}
+	var routinesSpawners []RoutineSpawner
 
 	err = parseRoutinesConfig(&routinesSpawners, cfg, "TCPClientTunnel", parseTCPClientTunnelConfig)
 	if err != nil {
