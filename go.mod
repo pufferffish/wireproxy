@@ -3,6 +3,7 @@ module github.com/octeep/wireproxy
 go 1.18
 
 require (
+	github.com/MakeNowJust/heredoc/v2 v2.0.1
 	github.com/akamensky/argparse v1.3.1
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/go-ini/ini v1.66.4

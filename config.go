@@ -12,15 +12,20 @@ import (
 	"net/netip"
 )
 
+type PeerConfig struct {
+	PublicKey    string
+	PreSharedKey string
+	Endpoint     string
+	KeepAlive    int
+	AllowedIPs   []netip.Addr
+}
+
 // DeviceConfig contains the information to initiate a wireguard connection
 type DeviceConfig struct {
 	SelfSecretKey string
 	SelfEndpoint  []netip.Addr
-	PeerPublicKey string
-	PeerEndpoint  string
+	Peers         []PeerConfig
 	DNS           []netip.Addr
-	KeepAlive     int
-	PreSharedKey  string
 	MTU           int
 }
 
@@ -144,6 +149,25 @@ func parseCIDRNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) 
 	return ips, nil
 }
 
+func parseAllowedIPs(section *ini.Section) ([]netip.Addr, error) {
+	key := section.Key("AllowedIPs")
+	if key == nil {
+		return []netip.Addr{}, nil
+	}
+
+	var ips []netip.Addr
+	for _, str := range key.StringsWithShadows(",") {
+		prefix, err := netip.ParsePrefix(str)
+		if err != nil {
+			return nil, err
+		}
+
+		addr := prefix.Addr()
+		ips = append(ips, addr)
+	}
+	return ips, nil
+}
+
 func resolveIP(ip string) (*net.IPAddr, error) {
 	return net.ResolveIPAddr("ip", ip)
 }
@@ -199,46 +223,55 @@ func ParseInterface(cfg *ini.File, device *DeviceConfig) error {
 	return nil
 }
 
-// ParsePeer parses the [Peer] section and extract the information into `device`
-func ParsePeer(cfg *ini.File, device *DeviceConfig) error {
+// ParsePeer parses the [Peer] section and extract the information into `peers`
+func ParsePeers(cfg *ini.File, peers *[]PeerConfig) error {
 	sections, err := cfg.SectionsByName("Peer")
-	if len(sections) != 1 || err != nil {
-		return errors.New("one and only one [Peer] is expected")
+	if len(sections) < 1 || err != nil {
+		return errors.New("at least one [Peer] is expected")
 	}
-	section := sections[0]
 
-	decoded, err := parseBase64KeyToHex(section, "PublicKey")
-	if err != nil {
-		return err
-	}
-	device.PeerPublicKey = decoded
+	for _, section := range sections {
+		peer := PeerConfig{}
 
-	if sectionKey, err := section.GetKey("PreSharedKey"); err == nil {
-		value, err := encodeBase64ToHex(sectionKey.String())
+		decoded, err := parseBase64KeyToHex(section, "PublicKey")
 		if err != nil {
 			return err
 		}
-		device.PreSharedKey = value
-	}
+		peer.PublicKey = decoded
 
-	decoded, err = parseString(section, "Endpoint")
-	if err != nil {
-		return err
-	}
-	decoded, err = resolveIPPAndPort(decoded)
-	if err != nil {
-		return err
-	}
-	device.PeerEndpoint = decoded
+		if sectionKey, err := section.GetKey("PreSharedKey"); err == nil {
+			value, err := encodeBase64ToHex(sectionKey.String())
+			if err != nil {
+				return err
+			}
+			peer.PreSharedKey = value
+		}
 
-	if sectionKey, err := section.GetKey("PersistentKeepalive"); err == nil {
-		value, err := sectionKey.Int()
+		decoded, err = parseString(section, "Endpoint")
 		if err != nil {
 			return err
 		}
-		device.KeepAlive = value
-	}
+		decoded, err = resolveIPPAndPort(decoded)
+		if err != nil {
+			return err
+		}
+		peer.Endpoint = decoded
 
+		if sectionKey, err := section.GetKey("PersistentKeepalive"); err == nil {
+			value, err := sectionKey.Int()
+			if err != nil {
+				return err
+			}
+			peer.KeepAlive = value
+		}
+
+		peer.AllowedIPs, err = parseAllowedIPs(section)
+		if err != nil {
+			return err
+		}
+
+		*peers = append(*peers, peer)
+	}
 	return nil
 }
 
@@ -318,8 +351,9 @@ func parseRoutinesConfig(routines *[]RoutineSpawner, cfg *ini.File, sectionName 
 // ParseConfig takes the path of a configuration file and parses it into Configuration
 func ParseConfig(path string) (*Configuration, error) {
 	iniOpt := ini.LoadOptions{
-		Insensitive:  true,
-		AllowShadows: true,
+		Insensitive:            true,
+		AllowShadows:           true,
+		AllowNonUniqueSections: true,
 	}
 
 	cfg, err := ini.LoadSources(iniOpt, path)
@@ -328,9 +362,7 @@ func ParseConfig(path string) (*Configuration, error) {
 	}
 
 	device := &DeviceConfig{
-		PreSharedKey: "0000000000000000000000000000000000000000000000000000000000000000",
-		KeepAlive:    0,
-		MTU:          1420,
+		MTU: 1420,
 	}
 
 	root := cfg.Section("")
@@ -348,7 +380,7 @@ func ParseConfig(path string) (*Configuration, error) {
 		return nil, err
 	}
 
-	err = ParsePeer(wgCfg, device)
+	err = ParsePeers(wgCfg, &device.Peers)
 	if err != nil {
 		return nil, err
 	}
