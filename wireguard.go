@@ -1,12 +1,15 @@
 package wireproxy
 
 import (
+	"bytes"
 	"fmt"
 
+	"net/netip"
+
+	"github.com/MakeNowJust/heredoc/v2"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun/netstack"
-	"net/netip"
 )
 
 // DeviceSetting contains the parameters for setting up a tun interface
@@ -19,15 +22,33 @@ type DeviceSetting struct {
 
 // serialize the config into an IPC request and DeviceSetting
 func createIPCRequest(conf *DeviceConfig) (*DeviceSetting, error) {
-	request := fmt.Sprintf(`private_key=%s
-public_key=%s
-endpoint=%s
-persistent_keepalive_interval=%d
-preshared_key=%s
-allowed_ip=0.0.0.0/0
-allowed_ip=::0/0`, conf.SelfSecretKey, conf.PeerPublicKey, conf.PeerEndpoint, conf.KeepAlive, conf.PreSharedKey)
+	var request bytes.Buffer
 
-	setting := &DeviceSetting{ipcRequest: request, dns: conf.DNS, deviceAddr: conf.SelfEndpoint, mtu: conf.MTU}
+	request.WriteString(fmt.Sprintf("private_key=%s\n", conf.SecretKey))
+
+	for _, peer := range conf.Peers {
+		request.WriteString(fmt.Sprintf(heredoc.Doc(`
+				public_key=%s
+				endpoint=%s
+				persistent_keepalive_interval=%d
+				preshared_key=%s
+			`),
+			peer.PublicKey, peer.Endpoint, peer.KeepAlive, peer.PreSharedKey,
+		))
+
+		if len(peer.AllowedIPs) > 0 {
+			for _, ip := range peer.AllowedIPs {
+				request.WriteString(fmt.Sprintf("allowed_ip=%s\n", ip.String()))
+			}
+		} else {
+			request.WriteString(heredoc.Doc(`
+				allowed_ip=0.0.0.0/0
+				allowed_ip=::0/0
+			`))
+		}
+	}
+
+	setting := &DeviceSetting{ipcRequest: request.String(), dns: conf.DNS, deviceAddr: conf.Endpoint, mtu: conf.MTU}
 	return setting, nil
 }
 
