@@ -318,8 +318,9 @@ func parseRoutinesConfig(routines *[]RoutineSpawner, cfg *ini.File, sectionName 
 // ParseConfig takes the path of a configuration file and parses it into Configuration
 func ParseConfig(path string) (*Configuration, error) {
 	iniOpt := ini.LoadOptions{
-		Insensitive:  true,
-		AllowShadows: true,
+		Insensitive:            true,
+		AllowShadows:           true,
+		AllowNonUniqueSections: true,
 	}
 
 	cfg, err := ini.LoadSources(iniOpt, path)
