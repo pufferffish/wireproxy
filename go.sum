@@ -817,8 +817,8 @@ golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224 h1:Ug9qvr1myri/zFN6xL
 golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224/go.mod h1:deeaetjYA+DHMHg+sMSMI58GrEteJUUzzw7en6TJQcI=
 golang.zx2c4.com/wireguard v0.0.0-20220316235147-5aff28b14c24 h1:KwsvzlnmErwMd3BXoBSEuL8qU72QxFM/uOUAgZmavRc=
 golang.zx2c4.com/wireguard v0.0.0-20220316235147-5aff28b14c24/go.mod h1:bVQfyl2sCM/QIIGHpWbFGfHPuDvqnCNkT6MQLTCjO/U=
-golang.zx2c4.com/wireguard/tun/netstack v0.0.0-20220407013110-ef5c587f782d h1:az6oQg96FdInSUqcRqptkepJ6TG4+H7W7KS+IFD/MUg=
-golang.zx2c4.com/wireguard/tun/netstack v0.0.0-20220407013110-ef5c587f782d/go.mod h1:JexL7LSkdvAJ7GXgsGHKpFeOAv+SuJiHPeRahPLZ9Qk=
+golang.zx2c4.com/wireguard/tun/netstack v0.0.0-20220703234212-c31a7b1ab478 h1:xJChlv+mV5zOP1PmNztA+DvfPFonaf253wjShnqM9Fk=
+golang.zx2c4.com/wireguard/tun/netstack v0.0.0-20220703234212-c31a7b1ab478/go.mod h1:JexL7LSkdvAJ7GXgsGHKpFeOAv+SuJiHPeRahPLZ9Qk=
 google.golang.org/api v0.4.0/go.mod h1:8k5glujaEP+g9n7WNsDg8QP6cUVNI86fCNMcbazEtwE=
 google.golang.org/api v0.7.0/go.mod h1:WtwebWUNSVBH/HAw79HIFXZNqEvBhG+Ra+ax0hx3E3M=
 google.golang.org/api v0.8.0/go.mod h1:o4eAsZoiT+ibD93RtjEohWalFOjRDx6CVaqeizhEnKg=
