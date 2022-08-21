@@ -13,12 +13,12 @@ on:
         default: "latest"
         required: true
 
+permissions:
+  packages: write
+
 jobs:
   container:
     runs-on: ubuntu-20.04
-
-    permissions:
-      packages: write
 
     env:
       CONTAINER_NAME: ghcr.io/${{ github.repository }}
