@@ -16,6 +16,10 @@ on:
 jobs:
   container:
     runs-on: ubuntu-20.04
+
+    permissions:
+      packages: write
+
     env:
       CONTAINER_NAME: ghcr.io/${{ github.repository }}
       BUILD_PLATFORMS: linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/s390x
