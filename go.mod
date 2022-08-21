@@ -7,7 +7,7 @@ require (
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/go-ini/ini v1.66.4
 	golang.zx2c4.com/wireguard v0.0.0-20220316235147-5aff28b14c24
-	golang.zx2c4.com/wireguard/tun/netstack v0.0.0-20220407013110-ef5c587f782d
+	golang.zx2c4.com/wireguard/tun/netstack v0.0.0-20220703234212-c31a7b1ab478
 	suah.dev/protect v1.2.0
 )
 
