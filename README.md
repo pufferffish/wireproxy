@@ -116,6 +116,39 @@ WGConfig = <path to the wireguard config>
 ...
 ```
 
+Having multiple peers is also supported. `AllowedIPs` would need to be specified
+such that wireproxy would know which peer to forward to.
+```
+[Interface]
+Address = 10.254.254.40/32
+PrivateKey = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=
+
+[Peer]
+Endpoint = 192.168.0.204:51820
+PublicKey = YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY=
+AllowedIPs = 10.254.254.100/32
+PersistentKeepalive = 25
+
+[Peer]
+PublicKey = ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ=
+AllowedIPs = 10.254.254.1/32, fdee:1337:c000:d00d::1/128
+Endpoint = 172.16.0.185:44044
+PersistentKeepalive = 25
+
+
+[TCPServerTunnel]
+ListenPort = 5000
+Target = service-one.servicenet:5000
+
+[TCPServerTunnel]
+ListenPort = 5001
+Target = service-two.servicenet:5001
+
+[TCPServerTunnel]
+ListenPort = 5080
+Target = service-three.servicenet:80
+```
+
 ## Donation
 <noscript><a href="https://liberapay.com/octeep/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"></a></noscript>
 
