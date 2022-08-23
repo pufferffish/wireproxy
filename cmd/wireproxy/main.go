@@ -14,6 +14,8 @@ import (
 // an argument to denote that this process was spawned by -d
 const daemonProcess = "daemon-process"
 
+var version = "dev"
+
 // attempts to pledge and panic if it fails
 // this does nothing on non-OpenBSD systems
 func pledgeOrPanic(promises string) {
@@ -60,13 +62,24 @@ func main() {
 	}
 	parser := argparse.NewParser("wireproxy", "Userspace wireguard client for proxying")
 
-	config := parser.String("c", "config", &argparse.Options{Required: true, Help: "Path of configuration file"})
+	config := parser.String("c", "config", &argparse.Options{Help: "Path of configuration file"})
 	daemon := parser.Flag("d", "daemon", &argparse.Options{Help: "Make wireproxy run in background"})
+	printVerison := parser.Flag("v", "version", &argparse.Options{Help: "Print version"})
 	configTest := parser.Flag("n", "configtest", &argparse.Options{Help: "Configtest mode. Only check the configuration file for validity."})
 
 	err := parser.Parse(args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
+		return
+	}
+
+	if *printVerison {
+		fmt.Printf("wireproxy, version %s\n", version)
+		return
+	}
+
+	if *config == "" {
+		fmt.Println("configuration path is required")
 		return
 	}
 
