@@ -14,7 +14,7 @@ import (
 // an argument to denote that this process was spawned by -d
 const daemonProcess = "daemon-process"
 
-var version = "1.0.4-dev"
+var version = "1.0.5-dev"
 
 // attempts to pledge and panic if it fails
 // this does nothing on non-OpenBSD systems

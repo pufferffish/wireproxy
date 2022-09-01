@@ -52,7 +52,7 @@ Arguments:
 ```
 git clone https://github.com/octeep/wireproxy
 cd wireproxy
-go build ./cmd/wireproxy
+make
 ```
 
 # Sample config file
