@@ -3,7 +3,9 @@ package wireproxy
 import (
 	"bytes"
 	"fmt"
+	"github.com/patrickmn/go-cache"
 	"net/netip"
+	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"golang.zx2c4.com/wireguard/conn"
@@ -73,8 +75,17 @@ func StartWireguard(conf *DeviceConfig) (*VirtualTun, error) {
 		return nil, err
 	}
 
+	natTable := cache.New(30*time.Second, time.Minute)
+	natTableRev := make(map[uint16]string)
+	natTable.OnEvicted(func(srcAddr string, i interface{}) {
+		entry := i.(*NatEntry)
+		_ = entry.conn.Close()
+		delete(natTableRev, entry.mappedPort)
+	})
 	return &VirtualTun{
-		tnet:      tnet,
-		systemDNS: len(setting.dns) == 0,
+		tnet:                 tnet,
+		systemDNS:            len(setting.dns) == 0,
+		mappedPortToNatEntry: natTableRev,
+		natEntryToMappedPort: natTable,
 	}, nil
 }
