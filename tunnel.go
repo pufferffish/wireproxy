@@ -148,6 +148,7 @@ func (d *VirtualTun) TCPHandle(s *socks5.Server, c *net.TCPConn, r *socks5.Reque
 					log.Println(err)
 					break
 				}
+				d.natEntryToMappedPort.Set(srcAddr, entry, 0)
 				d1 := socks5.NewDatagram(a, addr, port, b[0:n])
 				if _, err := s.UDPConn.WriteToUDP(d1.Bytes(), caddr); err != nil {
 					break
@@ -156,7 +157,7 @@ func (d *VirtualTun) TCPHandle(s *socks5.Server, c *net.TCPConn, r *socks5.Reque
 			_ = conn.Close()
 			d.natEntryToMappedPort.Delete(srcAddr)
 		}()
-		fmt.Printf("%s udp mapped to port %d", srcAddr, mappedPort)
+		fmt.Printf("%s udp mapped to port %d\n", srcAddr, mappedPort)
 		return nil
 	}
 	return socks5.ErrUnsupportCmd
@@ -169,6 +170,8 @@ func (d *VirtualTun) UDPHandle(server *socks5.Server, addr *net.UDPAddr, datagra
 		return fmt.Errorf("this udp address %s is not associated", srcAddr)
 	}
 	natEntry := entry.(*NatEntry)
+	// refresh timeout
+	d.natEntryToMappedPort.Set(srcAddr, entry, 0)
 	raddr, err := net.ResolveUDPAddr("udp", datagram.Address())
 	if err != nil {
 		return err
