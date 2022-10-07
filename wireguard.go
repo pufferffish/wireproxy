@@ -3,7 +3,6 @@ package wireproxy
 import (
 	"bytes"
 	"fmt"
-
 	"net/netip"
 
 	"github.com/MakeNowJust/heredoc/v2"
