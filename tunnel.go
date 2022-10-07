@@ -2,21 +2,32 @@ package wireproxy
 
 import (
 	"fmt"
+	"github.com/patrickmn/go-cache"
 	"github.com/txthinking/socks5"
 	"golang.zx2c4.com/wireguard/tun/netstack"
+	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
-	"os"
 	"time"
 )
 
 // VirtualTun stores a reference to netstack network and DNS configuration
 type VirtualTun struct {
-	tnet      *netstack.Net
-	systemDNS bool
+	tnet                 *netstack.Net
+	systemDNS            bool
+	mappedPortToNatEntry map[uint16]string
+	natEntryToMappedPort *cache.Cache
 }
+
+type NatEntry struct {
+	key        string
+	srcAddr    net.Addr
+	mappedPort uint16
+	conn       *gonet.UDPConn
+}
+
+var unspecifiedIP = make([]byte, 16)
 
 func (d *VirtualTun) connect(w io.Writer, r *socks5.Request) (net.Conn, error) {
 	if socks5.Debug {
@@ -102,20 +113,61 @@ func (d *VirtualTun) TCPHandle(s *socks5.Server, c *net.TCPConn, r *socks5.Reque
 		if err != nil {
 			return err
 		}
-		ch := make(chan byte)
-		defer close(ch)
-		s.AssociatedUDP.Set(caddr.String(), ch, -1)
-		defer s.AssociatedUDP.Delete(caddr.String())
-		io.Copy(ioutil.Discard, c)
-		if socks5.Debug {
-			log.Printf("A tcp connection that udp %#v associated closed\n", caddr.String())
+		srcAddr := caddr.String()
+		mappedPort := uint16(caddr.Port)
+		tries := 0
+		for _, occupied := d.mappedPortToNatEntry[mappedPort]; occupied; mappedPort++ {
+			tries++
+			if tries > 65535 {
+				return fmt.Errorf("nat table is full")
+			}
 		}
+		conn, err := d.tnet.ListenUDP(&net.UDPAddr{IP: unspecifiedIP, Port: caddr.Port})
+		if err != nil {
+			return err
+		}
+		entry := &NatEntry{
+			key:        srcAddr,
+			srcAddr:    caddr,
+			conn:       conn,
+			mappedPort: mappedPort,
+		}
+		d.mappedPortToNatEntry[mappedPort] = srcAddr
+		d.natEntryToMappedPort.Set(srcAddr, entry, 0)
+		go func() {
+			buf := make([]byte, 65536)
+			var b [65507]byte
+			for n, from, err := conn.ReadFrom(buf); err == nil; {
+				a, addr, port, err := socks5.ParseAddress(from.String())
+				if err != nil {
+					log.Println(err)
+					break
+				}
+				d1 := socks5.NewDatagram(a, addr, port, b[0:n])
+				if _, err := s.UDPConn.WriteToUDP(d1.Bytes(), caddr); err != nil {
+					break
+				}
+			}
+			_ = conn.Close()
+			d.natEntryToMappedPort.Delete(srcAddr)
+		}()
+		fmt.Printf("%s udp mapped to port %d", srcAddr, mappedPort)
 		return nil
 	}
 	return socks5.ErrUnsupportCmd
 }
 
 func (d *VirtualTun) UDPHandle(server *socks5.Server, addr *net.UDPAddr, datagram *socks5.Datagram) error {
-	_, err := fmt.Fprint(os.Stderr, "implement me")
+	srcAddr := addr.String()
+	entry, ok := d.natEntryToMappedPort.Get(srcAddr)
+	if !ok {
+		return fmt.Errorf("this udp address %s is not associated", srcAddr)
+	}
+	natEntry := entry.(*NatEntry)
+	raddr, err := net.ResolveUDPAddr("udp", datagram.Address())
+	if err != nil {
+		return err
+	}
+	_, err = natEntry.conn.WriteTo(datagram.Data, raddr)
 	return err
 }
