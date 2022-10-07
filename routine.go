@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"github.com/txthinking/socks5"
 	"io"
 	"log"
 	"math/rand"
@@ -11,9 +12,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/armon/go-socks5"
-
-	"golang.zx2c4.com/wireguard/tun/netstack"
 	"net/netip"
 )
 
@@ -24,12 +22,6 @@ var errorLogger = log.New(os.Stderr, "ERROR: ", log.LstdFlags)
 type CredentialValidator struct {
 	username string
 	password string
-}
-
-// VirtualTun stores a reference to netstack network and DNS configuration
-type VirtualTun struct {
-	tnet      *netstack.Net
-	systemDNS bool
 }
 
 // RoutineSpawner spawns a routine (e.g. socks5, tcp static routes) after the configuration is parsed
@@ -121,18 +113,12 @@ func (d VirtualTun) resolveToAddrPort(endpoint *addressPort) (*netip.AddrPort, e
 
 // SpawnRoutine spawns a socks5 server.
 func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
-	conf := &socks5.Config{Dial: vt.tnet.DialContext, Resolver: vt}
-	if username := config.Username; username != "" {
-		validator := CredentialValidator{username: username}
-		validator.password = config.Password
-		conf.Credentials = validator
-	}
-	server, err := socks5.New(conf)
+	server, err := socks5.NewClassicServer(config.BindAddress, "0.0.0.0", config.Username, config.Password, 15, 15)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	if err := server.ListenAndServe("tcp", config.BindAddress); err != nil {
+	err = server.ListenAndServe(vt)
+	if err != nil {
 		log.Fatal(err)
 	}
 }
