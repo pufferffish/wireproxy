@@ -141,16 +141,16 @@ func (d *VirtualTun) TCPHandle(s *socks5.Server, c *net.TCPConn, r *socks5.Reque
 		d.natEntryToMappedPort.Set(srcAddr, entry, 0)
 		go func() {
 			buf := make([]byte, 65536)
-			var b [65507]byte
-			for n, from, err := conn.ReadFrom(buf); err == nil; {
+			for n, from, err := conn.ReadFrom(buf); err == nil; n, from, err = conn.ReadFrom(buf) {
 				a, addr, port, err := socks5.ParseAddress(from.String())
 				if err != nil {
 					log.Println(err)
 					break
 				}
 				d.natEntryToMappedPort.Set(srcAddr, entry, 0)
-				d1 := socks5.NewDatagram(a, addr, port, b[0:n])
+				d1 := socks5.NewDatagram(a, addr, port, buf[0:n])
 				if _, err := s.UDPConn.WriteToUDP(d1.Bytes(), caddr); err != nil {
+					log.Println(err)
 					break
 				}
 			}
