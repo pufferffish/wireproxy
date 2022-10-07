@@ -27,8 +27,6 @@ type NatEntry struct {
 	conn       *gonet.UDPConn
 }
 
-var unspecifiedIP = make([]byte, 16)
-
 func (d *VirtualTun) connect(w io.Writer, r *socks5.Request) (net.Conn, error) {
 	if socks5.Debug {
 		log.Println("Call:", r.Address())
