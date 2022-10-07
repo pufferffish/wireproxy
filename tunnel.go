@@ -122,8 +122,13 @@ func (d *VirtualTun) TCPHandle(s *socks5.Server, c *net.TCPConn, r *socks5.Reque
 				return fmt.Errorf("nat table is full")
 			}
 		}
-		conn, err := d.tnet.ListenUDP(&net.UDPAddr{IP: unspecifiedIP, Port: caddr.Port})
+		laddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", mappedPort))
 		if err != nil {
+			return err
+		}
+		conn, err := d.tnet.ListenUDP(laddr)
+		if err != nil {
+			fmt.Println("fic")
 			return err
 		}
 		entry := &NatEntry{
