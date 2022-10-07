@@ -11,7 +11,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/armon/go-socks5"
+	"github.com/wzshiming/socks5"
 
 	"golang.zx2c4.com/wireguard/tun/netstack"
 	"net/netip"
@@ -121,15 +121,14 @@ func (d VirtualTun) resolveToAddrPort(endpoint *addressPort) (*netip.AddrPort, e
 
 // SpawnRoutine spawns a socks5 server.
 func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
-	conf := &socks5.Config{Dial: vt.tnet.DialContext, Resolver: vt}
+	var socksAuth socks5.Authentication
 	if username := config.Username; username != "" {
-		validator := CredentialValidator{username: username}
-		validator.password = config.Password
-		conf.Credentials = validator
+		socksAuth = socks5.UserAuth(config.Username, config.Password)
 	}
-	server, err := socks5.New(conf)
-	if err != nil {
-		log.Fatal(err)
+	server := socks5.Server{
+		Authentication: socksAuth,
+		ProxyDial: vt.tnet.DialContext,
+		Logger: errorLogger,
 	}
 
 	if err := server.ListenAndServe("tcp", config.BindAddress); err != nil {
