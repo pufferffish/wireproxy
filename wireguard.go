@@ -74,6 +74,9 @@ func StartWireguard(conf *DeviceConfig) (*VirtualTun, error) {
 		return nil, err
 	}
 
+	// Sending a keepalive directly after connecting makes the wireproxy reachable instantly
+	dev.SendKeepalivesToPeersWithCurrentKeypair()
+
 	return &VirtualTun{
 		tnet:      tnet,
 		systemDNS: len(setting.dns) == 0,
