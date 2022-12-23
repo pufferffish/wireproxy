@@ -28,8 +28,8 @@ type CredentialValidator struct {
 
 // VirtualTun stores a reference to netstack network and DNS configuration
 type VirtualTun struct {
-	tnet      *netstack.Net
-	systemDNS bool
+	Tnet      *netstack.Net
+	SystemDNS bool
 }
 
 // RoutineSpawner spawns a routine (e.g. socks5, tcp static routes) after the configuration is parsed
@@ -45,10 +45,10 @@ type addressPort struct {
 // LookupAddr lookups a hostname.
 // DNS traffic may or may not be routed depending on VirtualTun's setting
 func (d VirtualTun) LookupAddr(ctx context.Context, name string) ([]string, error) {
-	if d.systemDNS {
+	if d.SystemDNS {
 		return net.DefaultResolver.LookupHost(ctx, name)
 	} else {
-		return d.tnet.LookupContextHost(ctx, name)
+		return d.Tnet.LookupContextHost(ctx, name)
 	}
 }
 
@@ -121,7 +121,7 @@ func (d VirtualTun) resolveToAddrPort(endpoint *addressPort) (*netip.AddrPort, e
 
 // SpawnRoutine spawns a socks5 server.
 func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
-	conf := &socks5.Config{Dial: vt.tnet.DialContext, Resolver: vt}
+	conf := &socks5.Config{Dial: vt.Tnet.DialContext, Resolver: vt}
 	if username := config.Username; username != "" {
 		validator := CredentialValidator{username: username}
 		validator.password = config.Password
@@ -166,7 +166,7 @@ func tcpClientForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 
 	tcpAddr := TCPAddrFromAddrPort(*target)
 
-	sconn, err := vt.tnet.DialTCP(tcpAddr)
+	sconn, err := vt.Tnet.DialTCP(tcpAddr)
 	if err != nil {
 		errorLogger.Printf("TCP Client Tunnel to %s: %s\n", target, err.Error())
 		return
@@ -225,7 +225,7 @@ func (conf *TCPServerTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	}
 
 	addr := &net.TCPAddr{Port: conf.ListenPort}
-	server, err := vt.tnet.ListenTCP(addr)
+	server, err := vt.Tnet.ListenTCP(addr)
 	if err != nil {
 		log.Fatal(err)
 	}
