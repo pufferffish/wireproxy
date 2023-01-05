@@ -75,7 +75,7 @@ func StartWireguard(conf *DeviceConfig) (*VirtualTun, error) {
 	}
 
 	return &VirtualTun{
-		tnet:      tnet,
-		systemDNS: len(setting.dns) == 0,
+		Tnet:      tnet,
+		SystemDNS: len(setting.dns) == 0,
 	}, nil
 }
