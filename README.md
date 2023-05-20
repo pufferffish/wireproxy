@@ -34,8 +34,8 @@ anything.
 ```
 
 ```
-usage: wireproxy [-h|--help] -c|--config "<value>" [-d|--daemon]
-                 [-n|--configtest]
+usage: wireproxy [-h|--help] [-c|--config "<value>"] [-s|--silent]
+                 [-d|--daemon] [-v|--version] [-n|--configtest]
 
                  Userspace wireguard client for proxying
 
@@ -43,7 +43,9 @@ Arguments:
 
   -h  --help        Print help information
   -c  --config      Path of configuration file
+  -s  --silent      Silent mode
   -d  --daemon      Make wireproxy run in background
+  -v  --version     Print version
   -n  --configtest  Configtest mode. Only check the configuration file for
                     validity.
 ```

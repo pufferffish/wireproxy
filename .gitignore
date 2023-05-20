@@ -3,3 +3,4 @@
 *.sw?
 /.idea
 .goreleaser.yml
+*.conf
