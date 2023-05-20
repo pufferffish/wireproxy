@@ -137,6 +137,22 @@ func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
 	}
 }
 
+// SpawnRoutine spawns a http server.
+func (config *HTTPConfig) SpawnRoutine(vt *VirtualTun) {
+	http := &HTTPServer{
+		config: config,
+		dial:   vt.Tnet.Dial,
+		auth:   CredentialValidator{config.Username, config.Password},
+	}
+	if config.Username != "" || config.Password != "" {
+		http.authRequired = true
+	}
+
+	if err := http.ListenAndServe("tcp", config.BindAddress); err != nil {
+		log.Fatal(err)
+	}
+}
+
 // Valid checks the authentication data in CredentialValidator and compare them
 // to username and password in constant time.
 func (c CredentialValidator) Valid(username, password string) bool {
