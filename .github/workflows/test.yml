@@ -1,0 +1,32 @@
+name: Test
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  test:
+    name: Test wireproxy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setting up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+      - name: Install dependencies
+        run: sudo apt install wireguard curl
+      - name: Building wireproxy
+        run: |
+          git tag dev
+          make
+      - name: Generate test config
+        run: ./test_config.sh
+      - name: Start wireproxy
+        run: ./wireproxy -c test.conf & sleep 1
+      - name: Test socks5
+        run: curl --proxy socks5://localhost:64423 http://zx2c4.com/ip | grep -q "demo.wireguard.com"
+
