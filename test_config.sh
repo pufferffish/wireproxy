@@ -17,4 +17,12 @@ Endpoint = demo.wireguard.com:$server_port
 
 [Socks5]
 BindAddress = 127.0.0.1:64423
+
+[http]
+BindAddress = 127.0.0.1:64424
+
+[http]
+BindAddress = 127.0.0.1:64425
+Username = peter
+Password = hunter123
 EOL
