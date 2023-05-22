@@ -8,6 +8,7 @@ import (
 
 	"github.com/akamensky/argparse"
 	"github.com/octeep/wireproxy"
+	"golang.zx2c4.com/wireguard/device"
 	"suah.dev/protect"
 )
 
@@ -63,6 +64,7 @@ func main() {
 	parser := argparse.NewParser("wireproxy", "Userspace wireguard client for proxying")
 
 	config := parser.String("c", "config", &argparse.Options{Help: "Path of configuration file"})
+	silent := parser.Flag("s", "silent", &argparse.Options{Help: "Silent mode"})
 	daemon := parser.Flag("d", "daemon", &argparse.Options{Help: "Make wireproxy run in background"})
 	printVerison := parser.Flag("v", "version", &argparse.Options{Help: "Print version"})
 	configTest := parser.Flag("n", "configtest", &argparse.Options{Help: "Configtest mode. Only check the configuration file for validity."})
@@ -114,10 +116,15 @@ func main() {
 		return
 	}
 
+	logLevel := device.LogLevelVerbose
+	if *silent {
+		logLevel = device.LogLevelSilent
+	}
+
 	// no file access is allowed from now on, only networking
 	pledgeOrPanic("stdio inet dns")
 
-	tnet, err := wireproxy.StartWireguard(conf.Device)
+	tnet, err := wireproxy.StartWireguard(conf.Device, logLevel)
 	if err != nil {
 		log.Fatal(err)
 	}
