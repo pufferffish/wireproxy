@@ -30,7 +30,7 @@ jobs:
       - name: Test socks5
         run: curl --proxy socks5://localhost:64423 http://zx2c4.com/ip | grep -q "demo.wireguard.com"
       - name: Test http
-        run: curl --proxy socks5://localhost:64424 http://zx2c4.com/ip | grep -q "demo.wireguard.com"
+        run: curl --proxy http://localhost:64424 http://zx2c4.com/ip | grep -q "demo.wireguard.com"
       - name: Test http with password
         run: curl --proxy http://peter:hunter123@localhost:64424 http://zx2c4.com/ip | grep -q "demo.wireguard.com"
       - name: Test http with wrong password
