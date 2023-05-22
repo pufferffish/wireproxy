@@ -35,5 +35,5 @@ jobs:
         run: curl --proxy http://peter:hunter123@localhost:64424 http://zx2c4.com/ip | grep -q "demo.wireguard.com"
       - name: Test http with wrong password
         run: |
-          curl -s --fail --proxy http://peter:hunter123@localhost:64425 http://zx2c4.com/ip
+          curl -s --fail --proxy http://peter:wrongpass@localhost:64425 http://zx2c4.com/ip
           if [[ $? == 0 ]]; then exit 1; fi
