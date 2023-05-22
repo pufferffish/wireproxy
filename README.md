@@ -3,11 +3,11 @@
 [![Build status](https://github.com/octeep/wireproxy/actions/workflows/build.yml/badge.svg)](https://github.com/octeep/wireproxy/actions)
 [![Documentation](https://img.shields.io/badge/godoc-wireproxy-blue)](https://pkg.go.dev/github.com/octeep/wireproxy)
 
-A wireguard client that exposes itself as a socks5 proxy or tunnels.
+A wireguard client that exposes itself as a socks5/http proxy or tunnels.
 
 # What is this
 `wireproxy` is a completely userspace application that connects to a wireguard peer,
-and exposes a socks5 proxy or tunnels on the machine. This can be useful if you need
+and exposes a socks5/http proxy or tunnels on the machine. This can be useful if you need
 to connect to certain sites via a wireguard peer, but can't be bothered to setup a new network
 interface for whatever reasons.
 
@@ -22,7 +22,7 @@ anything.
 
 # Feature
 - TCP static routing for client and server
-- SOCKS5 proxy (currently only CONNECT is supported) 
+- SOCKS5/HTTP proxy (currently only CONNECT is supported)
 
 # TODO
 - UDP Support in SOCKS5
@@ -96,6 +96,16 @@ Target = localhost:25545
 BindAddress = 127.0.0.1:25344
 
 # Socks5 authentication parameters, specifying username and password enables
+# proxy authentication.
+#Username = ...
+# Avoid using spaces in the password field
+#Password = ...
+
+# http creates a http proxy on your LAN, and all traffic would be routed via wireguard.
+[http]
+BindAddress = 127.0.0.1:25345
+
+# HTTP authentication parameters, specifying username and password enables
 # proxy authentication.
 #Username = ...
 # Avoid using spaces in the password field

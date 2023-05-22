@@ -45,6 +45,12 @@ type Socks5Config struct {
 	Password    string
 }
 
+type HTTPConfig struct {
+	BindAddress string
+	Username    string
+	Password    string
+}
+
 type Configuration struct {
 	Device   *DeviceConfig
 	Routines []RoutineSpawner
@@ -330,6 +336,24 @@ func parseSocks5Config(section *ini.Section) (RoutineSpawner, error) {
 	return config, nil
 }
 
+func parseHTTPConfig(section *ini.Section) (RoutineSpawner, error) {
+	config := &HTTPConfig{}
+
+	bindAddress, err := parseString(section, "BindAddress")
+	if err != nil {
+		return nil, err
+	}
+	config.BindAddress = bindAddress
+
+	username, _ := parseString(section, "Username")
+	config.Username = username
+
+	password, _ := parseString(section, "Password")
+	config.Password = password
+
+	return config, nil
+}
+
 // Takes a function that parses an individual section into a config, and apply it on all
 // specified sections
 func parseRoutinesConfig(routines *[]RoutineSpawner, cfg *ini.File, sectionName string, f func(*ini.Section) (RoutineSpawner, error)) error {
@@ -400,6 +424,11 @@ func ParseConfig(path string) (*Configuration, error) {
 	}
 
 	err = parseRoutinesConfig(&routinesSpawners, cfg, "Socks5", parseSocks5Config)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseRoutinesConfig(&routinesSpawners, cfg, "http", parseHTTPConfig)
 	if err != nil {
 		return nil, err
 	}
