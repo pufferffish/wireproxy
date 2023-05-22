@@ -35,4 +35,3 @@ jobs:
         run: curl --proxy http://peter:hunter123@localhost:64424 http://zx2c4.com/ip | grep -q "demo.wireguard.com"
       - name: Test http with wrong password
         run: bash -c "! curl --proxy http://peter:wrongpass@localhost:64424 http://zx2c4.com/ip"
-
