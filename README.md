@@ -91,6 +91,16 @@ Target = play.cubecraft.net:25565
 ListenPort = 3422
 Target = localhost:25545
 
+# STDIOTunnel is a tunnel connecting the standard input and output of the wireproxy
+# process to the specified TCP target via wireguard.
+# This is especially useful to use wireproxy as a ProxyCommand parameter in openssh
+# For example:
+#    ssh -o ProxyCommand='wireproxy -c myconfig.conf' ssh.myserver.net
+# Flow:
+# Piped command -->(wireguard)--> ssh.myserver.net:22
+[STDIOTunnel]
+Target = ssh.myserver.net:22
+
 # Socks5 creates a socks5 proxy on your LAN, and all traffic would be routed via wireguard.
 [Socks5]
 BindAddress = 127.0.0.1:25344

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"syscall"
 
 	"github.com/akamensky/argparse"
 	"github.com/octeep/wireproxy"
@@ -116,6 +117,10 @@ func main() {
 		return
 	}
 
+	// Wireguard doesn't allow configuring which FD to use for logging
+	// https://github.com/WireGuard/wireguard-go/blob/master/device/logger.go#L39
+	// so redirect STDOUT to STDERR, we don't want to print anything to STDOUT anyways
+	os.Stdout = os.NewFile(uintptr(syscall.Stderr), "/dev/stderr")
 	logLevel := device.LogLevelVerbose
 	if *silent {
 		logLevel = device.LogLevelSilent

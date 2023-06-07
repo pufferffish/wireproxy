@@ -192,6 +192,32 @@ func tcpClientForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 	go connForward(1024, conn, sconn)
 }
 
+// STDIOTcpForward starts a new connection via wireguard and forward traffic from `conn`
+func STDIOTcpForward(vt *VirtualTun, raddr *addressPort) {
+	target, err := vt.resolveToAddrPort(raddr)
+	if err != nil {
+		errorLogger.Printf("Name resolution error for %s: %s\n", raddr.address, err.Error())
+		return
+	}
+
+	// os.Stdout has previously been remapped to stderr, se we can't use it
+	stdout, err := os.OpenFile("/dev/stdout", os.O_WRONLY, 0)
+	if err != nil {
+		errorLogger.Printf("Failed to open /dev/stdout: %s\n", err.Error())
+		return
+	}
+
+	tcpAddr := TCPAddrFromAddrPort(*target)
+	sconn, err := vt.Tnet.DialTCP(tcpAddr)
+	if err != nil {
+		errorLogger.Printf("TCP Client Tunnel to %s (%s): %s\n", target, tcpAddr, err.Error())
+		return
+	}
+
+	go connForward(1024, os.Stdin, sconn)
+	go connForward(1024, sconn, stdout)
+}
+
 // SpawnRoutine spawns a local TCP server which acts as a proxy to the specified target
 func (conf *TCPClientTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	raddr, err := parseAddressPort(conf.Target)
@@ -211,6 +237,16 @@ func (conf *TCPClientTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 		}
 		go tcpClientForward(vt, raddr, conn)
 	}
+}
+
+// SpawnRoutine connects to the specified target and plumbs it to STDIN / STDOUT
+func (conf *STDIOTunnelConfig) SpawnRoutine(vt *VirtualTun) {
+	raddr, err := parseAddressPort(conf.Target)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go STDIOTcpForward(vt, raddr)
 }
 
 // tcpServerForward starts a new connection locally and forward traffic from `conn`
