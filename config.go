@@ -34,6 +34,10 @@ type TCPClientTunnelConfig struct {
 	Target      string
 }
 
+type STDIOTunnelConfig struct {
+	Target      string
+}
+
 type TCPServerTunnelConfig struct {
 	ListenPort int
 	Target     string
@@ -300,6 +304,17 @@ func parseTCPClientTunnelConfig(section *ini.Section) (RoutineSpawner, error) {
 	return config, nil
 }
 
+func parseSTDIOTunnelConfig(section *ini.Section) (RoutineSpawner, error) {
+	config := &STDIOTunnelConfig{}
+	targetSection, err := parseString(section, "Target")
+	if err != nil {
+		return nil, err
+	}
+	config.Target = targetSection
+
+	return config, nil
+}
+
 func parseTCPServerTunnelConfig(section *ini.Section) (RoutineSpawner, error) {
 	config := &TCPServerTunnelConfig{}
 
@@ -414,6 +429,11 @@ func ParseConfig(path string) (*Configuration, error) {
 	var routinesSpawners []RoutineSpawner
 
 	err = parseRoutinesConfig(&routinesSpawners, cfg, "TCPClientTunnel", parseTCPClientTunnelConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseRoutinesConfig(&routinesSpawners, cfg, "STDIOTunnel", parseSTDIOTunnelConfig)
 	if err != nil {
 		return nil, err
 	}
