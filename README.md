@@ -58,7 +58,7 @@ make
 ```
 
 # Use with VPN
-Instructions for how to use with Firefox container tabs and auto-start on MacOS can be found [here](/UseWithVPN.md).
+Instructions for using wireproxy with Firefox container tabs and auto-start on MacOS can be found [here](/UseWithVPN.md).
 
 # Sample config file
 ```
