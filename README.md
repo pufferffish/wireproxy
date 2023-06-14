@@ -57,6 +57,9 @@ cd wireproxy
 make
 ```
 
+# Use with VPN
+Instructions for using wireproxy with Firefox container tabs and auto-start on MacOS can be found [here](/UseWithVPN.md).
+
 # Sample config file
 ```
 # The [Interface] and [Peer] configurations follow the same semantics and meaning
@@ -161,10 +164,5 @@ ListenPort = 5080
 Target = service-three.servicenet:80
 ```
 
-## Donation
-<noscript><a href="https://liberapay.com/octeep/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"></a></noscript>
-
-
-## Stargazers over time
-
+# Stargazers over time
 [![Stargazers over time](https://starchart.cc/octeep/wireproxy.svg)](https://starchart.cc/octeep/wireproxy)
