@@ -1,0 +1,18 @@
+[Unit]
+Description=Wireproxy socks5/http tunnel
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+#Uncomment and/or change these if you don't want to run Wireproxy as root
+#User=wireproxy
+#Group=wireproxy
+Type=simple
+Restart=on-failure
+RestartSec=30s
+ExecStartPre=/opt/wireproxy/wireproxy -n -c /etc/wireproxy.conf
+ExecStart=/opt/wireproxy/wireproxy -c /etc/wireproxy.conf
+SyslogIdentifier=wireproxy
+
+[Install]
+WantedBy=multi-user.target
