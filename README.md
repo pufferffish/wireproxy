@@ -174,5 +174,17 @@ ListenPort = 5080
 Target = service-three.servicenet:80
 ```
 
+Wireproxy can also allow peers to connect to it:
+```
+[Interface]
+ListenPort = 5400
+...
+
+[Peer]
+PublicKey = YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY=
+AllowedIPs = 10.254.254.100/32
+# Note there is no Endpoint defined here.
+```
+
 # Stargazers over time
 [![Stargazers over time](https://starchart.cc/octeep/wireproxy.svg)](https://starchart.cc/octeep/wireproxy)

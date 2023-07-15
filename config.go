@@ -15,18 +15,19 @@ import (
 type PeerConfig struct {
 	PublicKey    string
 	PreSharedKey string
-	Endpoint     string
+	Endpoint     *string
 	KeepAlive    int
 	AllowedIPs   []netip.Prefix
 }
 
 // DeviceConfig contains the information to initiate a wireguard connection
 type DeviceConfig struct {
-	SecretKey string
-	Endpoint  []netip.Addr
-	Peers     []PeerConfig
-	DNS       []netip.Addr
-	MTU       int
+	SecretKey  string
+	Endpoint   []netip.Addr
+	Peers      []PeerConfig
+	DNS        []netip.Addr
+	MTU        int
+	ListenPort *int
 }
 
 type TCPClientTunnelConfig struct {
@@ -229,6 +230,14 @@ func ParseInterface(cfg *ini.File, device *DeviceConfig) error {
 		device.MTU = value
 	}
 
+	if sectionKey, err := section.GetKey("ListenPort"); err == nil {
+		value, err := sectionKey.Int()
+		if err != nil {
+			return err
+		}
+		device.ListenPort = &value
+	}
+
 	return nil
 }
 
@@ -259,15 +268,14 @@ func ParsePeers(cfg *ini.File, peers *[]PeerConfig) error {
 			peer.PreSharedKey = value
 		}
 
-		decoded, err = parseString(section, "Endpoint")
-		if err != nil {
-			return err
+		if sectionKey, err := section.GetKey("Endpoint"); err == nil {
+			value := sectionKey.String()
+			decoded, err = resolveIPPAndPort(strings.ToLower(value))
+			if err != nil {
+				return err
+			}
+			peer.Endpoint = &decoded
 		}
-		decoded, err = resolveIPPAndPort(decoded)
-		if err != nil {
-			return err
-		}
-		peer.Endpoint = decoded
 
 		if sectionKey, err := section.GetKey("PersistentKeepalive"); err == nil {
 			value, err := sectionKey.Int()

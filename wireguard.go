@@ -26,15 +26,21 @@ func createIPCRequest(conf *DeviceConfig) (*DeviceSetting, error) {
 
 	request.WriteString(fmt.Sprintf("private_key=%s\n", conf.SecretKey))
 
+	if conf.ListenPort != nil {
+		request.WriteString(fmt.Sprintf("listen_port=%d\n", *conf.ListenPort))
+	}
+
 	for _, peer := range conf.Peers {
 		request.WriteString(fmt.Sprintf(heredoc.Doc(`
 				public_key=%s
-				endpoint=%s
 				persistent_keepalive_interval=%d
 				preshared_key=%s
 			`),
-			peer.PublicKey, peer.Endpoint, peer.KeepAlive, peer.PreSharedKey,
+			peer.PublicKey, peer.KeepAlive, peer.PreSharedKey,
 		))
+		if peer.Endpoint != nil {
+			request.WriteString(fmt.Sprintf("endpoint=%s\n", *peer.Endpoint))
+		}
 
 		if len(peer.AllowedIPs) > 0 {
 			for _, ip := range peer.AllowedIPs {
