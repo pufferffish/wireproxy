@@ -16,7 +16,7 @@ jobs:
       - name: Setting up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19
+          go-version: "1.20"
       - name: Building Windows amd64 Version
         run: |
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o WireProxy_amd64.exe -v ./cmd/wireproxy
@@ -36,7 +36,7 @@ jobs:
       - name: Setting up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19
+          go-version: "1.20"
       - name: Building Windows arm64 Version
         run: |
           CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o WireProxy_arm64.exe -v ./cmd/wireproxy
@@ -56,7 +56,7 @@ jobs:
       - name: Setting up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19
+          go-version: "1.20"
       - name: Building Linux amd64 Version
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o WireProxy_amd64 -v ./cmd/wireproxy
@@ -76,7 +76,7 @@ jobs:
       - name: Setting up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19
+          go-version: "1.20"
       - name: Building Linux arm64 Version
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o WireProxy_arm64 -v ./cmd/wireproxy
@@ -96,7 +96,7 @@ jobs:
       - name: Setting up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19
+          go-version: "1.20"
       - name: Building Linux s390x Version
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=s390x go build -o WireProxy_s390x -v ./cmd/wireproxy
@@ -116,7 +116,7 @@ jobs:
       - name: Setting up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19
+          go-version: "1.20"
       - name: Building Darwin amd64 Version
         run: |
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o WireProxy_amd64 -v ./cmd/wireproxy
@@ -136,7 +136,7 @@ jobs:
       - name: Setting up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19
+          go-version: "1.20"
       - name: Building Darwin arm64 Version
         run: |
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o WireProxy_arm64 -v ./cmd/wireproxy
