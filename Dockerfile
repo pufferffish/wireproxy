@@ -1,5 +1,5 @@
 # Start by building the application.
-FROM golang:1.18 as build
+FROM docker.io/golang:1.20 as build
 
 WORKDIR /usr/src/wireproxy
 COPY . .
