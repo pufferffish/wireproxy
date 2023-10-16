@@ -6,7 +6,7 @@ I recommend ProtonVPN, because it is highly secure and has a great WireGuard
 config generator.
 
 Simply go to https://account.protonvpn.com/downloads and scroll down to the
-wireguard section to generate your configs, then paste into the apporpriate
+wireguard section to generate your configs, then paste into the appropriate
 section below.
 
 # Simple Setup for multiple SOCKS configs for firefox
