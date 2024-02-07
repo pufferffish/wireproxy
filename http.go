@@ -140,7 +140,7 @@ func (s *HTTPServer) ListenAndServe(network, addr string) error {
 	if err != nil {
 		return fmt.Errorf("listen tcp failed: %w", err)
 	}
-
+	defer server.Close()
 	for {
 		conn, err := server.Accept()
 		if err != nil {
@@ -151,6 +151,7 @@ func (s *HTTPServer) ListenAndServe(network, addr string) error {
 			if err != nil {
 				log.Println(err)
 			}
+			_ = conn.Close()
 		}(conn)
 	}
 }
