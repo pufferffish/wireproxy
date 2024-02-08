@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"github.com/akamensky/argparse"
-	"github.com/octeep/wireproxy"
+	"github.com/pufferffish/wireproxy"
 	"golang.zx2c4.com/wireguard/device"
 	"suah.dev/protect"
 )

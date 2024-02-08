@@ -11,10 +11,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/armon/go-socks5"
+	"github.com/things-go/go-socks5"
+	"github.com/things-go/go-socks5/bufferpool"
+
+	"net/netip"
 
 	"golang.zx2c4.com/wireguard/tun/netstack"
-	"net/netip"
 )
 
 // errorLogger is the logger to print error message
@@ -47,9 +49,8 @@ type addressPort struct {
 func (d VirtualTun) LookupAddr(ctx context.Context, name string) ([]string, error) {
 	if d.SystemDNS {
 		return net.DefaultResolver.LookupHost(ctx, name)
-	} else {
-		return d.Tnet.LookupContextHost(ctx, name)
 	}
+	return d.Tnet.LookupContextHost(ctx, name)
 }
 
 // ResolveAddrWithContext resolves a hostname and returns an AddrPort.
@@ -121,16 +122,23 @@ func (d VirtualTun) resolveToAddrPort(endpoint *addressPort) (*netip.AddrPort, e
 
 // SpawnRoutine spawns a socks5 server.
 func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
-	conf := &socks5.Config{Dial: vt.Tnet.DialContext, Resolver: vt}
+	var authMethods []socks5.Authenticator
 	if username := config.Username; username != "" {
-		validator := CredentialValidator{username: username}
-		validator.password = config.Password
-		conf.Credentials = validator
+		authMethods = append(authMethods, socks5.UserPassAuthenticator{
+			Credentials: socks5.StaticCredentials{username: config.Password},
+		})
+	} else {
+		authMethods = append(authMethods, socks5.NoAuthAuthenticator{})
 	}
-	server, err := socks5.New(conf)
-	if err != nil {
-		log.Fatal(err)
+
+	options := []socks5.Option{
+		socks5.WithDial(vt.Tnet.DialContext),
+		socks5.WithResolver(vt),
+		socks5.WithAuthMethods(authMethods),
+		socks5.WithBufferPool(bufferpool.NewPool(256 * 1024)),
 	}
+
+	server := socks5.NewServer(options...)
 
 	if err := server.ListenAndServe("tcp", config.BindAddress); err != nil {
 		log.Fatal(err)
@@ -229,8 +237,9 @@ func (conf *TCPClientTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 		log.Fatal(err)
 	}
 
+	var conn net.Conn
 	for {
-		conn, err := server.Accept()
+		conn, err = server.Accept()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -281,8 +290,9 @@ func (conf *TCPServerTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 		log.Fatal(err)
 	}
 
+	var conn net.Conn
 	for {
-		conn, err := server.Accept()
+		conn, err = server.Accept()
 		if err != nil {
 			log.Fatal(err)
 		}

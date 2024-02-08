@@ -62,7 +62,7 @@ func (s *HTTPServer) handleConn(req *http.Request, conn net.Conn) (peer net.Conn
 
 	_, err = conn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 	if err != nil {
-		peer.Close()
+		_ = peer.Close()
 		peer = nil
 	}
 
@@ -83,7 +83,7 @@ func (s *HTTPServer) handle(req *http.Request) (peer net.Conn, err error) {
 
 	err = req.Write(peer)
 	if err != nil {
-		peer.Close()
+		_ = peer.Close()
 		peer = nil
 		return peer, fmt.Errorf("conn write failed: %w", err)
 	}
@@ -92,10 +92,8 @@ func (s *HTTPServer) handle(req *http.Request) (peer net.Conn, err error) {
 }
 
 func (s *HTTPServer) serve(conn net.Conn) error {
-	defer conn.Close()
-
-	var rd io.Reader = bufio.NewReader(conn)
-	req, err := http.ReadRequest(rd.(*bufio.Reader))
+	var rd = bufio.NewReader(conn)
+	req, err := http.ReadRequest(rd)
 	if err != nil {
 		return fmt.Errorf("read request failed: %w", err)
 	}
@@ -124,11 +122,6 @@ func (s *HTTPServer) serve(conn net.Conn) error {
 	}
 	defer peer.Close()
 
-	go func() {
-		defer peer.Close()
-		defer conn.Close()
-		_, _ = io.Copy(conn, peer)
-	}()
 	_, err = io.Copy(peer, conn)
 
 	return err
@@ -136,13 +129,14 @@ func (s *HTTPServer) serve(conn net.Conn) error {
 
 // ListenAndServe is used to create a listener and serve on it
 func (s *HTTPServer) ListenAndServe(network, addr string) error {
-	server, err := net.Listen("tcp", s.config.BindAddress)
+	server, err := net.Listen(network, addr)
 	if err != nil {
 		return fmt.Errorf("listen tcp failed: %w", err)
 	}
 	defer server.Close()
+	var conn net.Conn
 	for {
-		conn, err := server.Accept()
+		conn, err = server.Accept()
 		if err != nil {
 			return fmt.Errorf("accept request failed: %w", err)
 		}
@@ -152,6 +146,7 @@ func (s *HTTPServer) ListenAndServe(network, addr string) error {
 				log.Println(err)
 			}
 			_ = conn.Close()
+			conn = nil
 		}(conn)
 	}
 }

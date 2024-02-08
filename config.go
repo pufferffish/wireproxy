@@ -36,7 +36,7 @@ type TCPClientTunnelConfig struct {
 }
 
 type STDIOTunnelConfig struct {
-	Target      string
+	Target string
 }
 
 type TCPServerTunnelConfig struct {
@@ -125,8 +125,9 @@ func parseNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) {
 		return []netip.Addr{}, nil
 	}
 
-	var ips []netip.Addr
-	for _, str := range key.StringsWithShadows(",") {
+	keys := key.StringsWithShadows(",")
+	var ips = make([]netip.Addr, 0, len(keys))
+	for _, str := range keys {
 		str = strings.TrimSpace(str)
 		ip, err := netip.ParseAddr(str)
 		if err != nil {
@@ -143,8 +144,9 @@ func parseCIDRNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) 
 		return []netip.Addr{}, nil
 	}
 
-	var ips []netip.Addr
-	for _, str := range key.StringsWithShadows(",") {
+	keys := key.StringsWithShadows(",")
+	var ips = make([]netip.Addr, 0, len(keys))
+	for _, str := range keys {
 		prefix, err := netip.ParsePrefix(str)
 		if err != nil {
 			return nil, err
@@ -162,8 +164,9 @@ func parseAllowedIPs(section *ini.Section) ([]netip.Prefix, error) {
 		return []netip.Prefix{}, nil
 	}
 
-	var ips []netip.Prefix
-	for _, str := range key.StringsWithShadows(",") {
+	keys := key.StringsWithShadows(",")
+	var ips = make([]netip.Prefix, 0, len(keys))
+	for _, str := range keys {
 		prefix, err := netip.ParsePrefix(str)
 		if err != nil {
 			return nil, err
@@ -237,7 +240,7 @@ func ParseInterface(cfg *ini.File, device *DeviceConfig) error {
 	return nil
 }
 
-// ParsePeer parses the [Peer] section and extract the information into `peers`
+// ParsePeers parses the [Peer] section and extract the information into `peers`
 func ParsePeers(cfg *ini.File, peers *[]PeerConfig) error {
 	sections, err := cfg.SectionsByName("Peer")
 	if len(sections) < 1 || err != nil {
