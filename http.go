@@ -122,6 +122,10 @@ func (s *HTTPServer) serve(conn net.Conn) error {
 	}
 	defer peer.Close()
 
+	go func() {
+		_, _ = io.Copy(conn, peer)
+	}()
+
 	_, err = io.Copy(peer, conn)
 
 	return err
