@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/sourcegraph/conc"
 	"github.com/things-go/go-socks5"
 	"github.com/things-go/go-socks5/bufferpool"
 
@@ -175,8 +176,6 @@ func connForward(from io.ReadWriteCloser, to io.ReadWriteCloser) {
 	if err != nil {
 		errorLogger.Printf("Cannot forward traffic: %s\n", err.Error())
 	}
-	_ = from.Close()
-	_ = to.Close()
 }
 
 // tcpClientForward starts a new connection via wireguard and forward traffic from `conn`
@@ -195,8 +194,17 @@ func tcpClientForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 		return
 	}
 
-	go connForward(sconn, conn)
-	go connForward(conn, sconn)
+	go func() {
+		gr := conc.NewWaitGroup()
+		gr.Go(func() {
+			connForward(sconn, conn)
+		})
+		gr.Go(func() {
+			connForward(conn, sconn)
+		})
+		gr.Wait()
+		_ = sconn.Close()
+	}()
 }
 
 // STDIOTcpForward starts a new connection via wireguard and forward traffic from `conn`
@@ -221,8 +229,16 @@ func STDIOTcpForward(vt *VirtualTun, raddr *addressPort) {
 		return
 	}
 
-	go connForward(os.Stdin, sconn)
-	go connForward(sconn, stdout)
+	go func() {
+		gr := conc.NewWaitGroup()
+		gr.Go(func() {
+			connForward(os.Stdin, sconn)
+		})
+		gr.Go(func() {
+			connForward(sconn, stdout)
+		})
+		gr.Wait()
+	}()
 }
 
 // SpawnRoutine spawns a local TCP server which acts as a proxy to the specified target
@@ -273,8 +289,17 @@ func tcpServerForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 		return
 	}
 
-	go connForward(sconn, conn)
-	go connForward(conn, sconn)
+	go func() {
+		gr := conc.NewWaitGroup()
+		gr.Go(func() {
+			connForward(sconn, conn)
+		})
+		gr.Go(func() {
+			connForward(conn, sconn)
+		})
+		gr.Wait()
+		_ = sconn.Close()
+	}()
 }
 
 // SpawnRoutine spawns a TCP server on wireguard which acts as a proxy to the specified target
