@@ -131,13 +131,13 @@ func (s *HTTPServer) serve(conn net.Conn) {
 		wg := conc.NewWaitGroup()
 		wg.Go(func() {
 			_, err = io.Copy(conn, peer)
+			_ = conn.Close()
 		})
 		wg.Go(func() {
 			_, err = io.Copy(peer, conn)
+			_ = peer.Close()
 		})
 		wg.Wait()
-		_ = peer.Close()
-		_ = conn.Close()
 	}()
 }
 
