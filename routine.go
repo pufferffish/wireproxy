@@ -170,7 +170,7 @@ func (c CredentialValidator) Valid(username, password string) bool {
 	return u&p == 1
 }
 
-// connForward copy data from `from` to `to`, then close both stream.
+// connForward copy data from `from` to `to`
 func connForward(from io.ReadWriteCloser, to io.ReadWriteCloser) {
 	_, err := io.Copy(to, from)
 	if err != nil {
@@ -195,15 +195,18 @@ func tcpClientForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 	}
 
 	go func() {
-		gr := conc.NewWaitGroup()
-		gr.Go(func() {
+		wg := conc.NewWaitGroup()
+		wg.Go(func() {
 			connForward(sconn, conn)
 		})
-		gr.Go(func() {
+		wg.Go(func() {
 			connForward(conn, sconn)
 		})
-		gr.Wait()
+		wg.Wait()
 		_ = sconn.Close()
+		_ = conn.Close()
+		sconn = nil
+		conn = nil
 	}()
 }
 
@@ -230,14 +233,16 @@ func STDIOTcpForward(vt *VirtualTun, raddr *addressPort) {
 	}
 
 	go func() {
-		gr := conc.NewWaitGroup()
-		gr.Go(func() {
+		wg := conc.NewWaitGroup()
+		wg.Go(func() {
 			connForward(os.Stdin, sconn)
 		})
-		gr.Go(func() {
+		wg.Go(func() {
 			connForward(sconn, stdout)
 		})
-		gr.Wait()
+		wg.Wait()
+		_ = sconn.Close()
+		sconn = nil
 	}()
 }
 
@@ -253,9 +258,8 @@ func (conf *TCPClientTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 		log.Fatal(err)
 	}
 
-	var conn net.Conn
 	for {
-		conn, err = server.Accept()
+		conn, err := server.Accept()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -299,6 +303,9 @@ func tcpServerForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 		})
 		gr.Wait()
 		_ = sconn.Close()
+		_ = conn.Close()
+		sconn = nil
+		conn = nil
 	}()
 }
 
@@ -315,9 +322,8 @@ func (conf *TCPServerTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 		log.Fatal(err)
 	}
 
-	var conn net.Conn
 	for {
-		conn, err = server.Accept()
+		conn, err := server.Accept()
 		if err != nil {
 			log.Fatal(err)
 		}
