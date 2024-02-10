@@ -38,7 +38,7 @@ jobs:
           distribution: goreleaser
           workdir: ${{ env.workdir }}
           version: latest
-          args: release --rm-dist
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
