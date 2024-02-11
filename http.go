@@ -10,6 +10,8 @@ import (
 	"net"
 	"net/http"
 	"strings"
+
+	"github.com/sourcegraph/conc"
 )
 
 const proxyAuthHeaderKey = "Proxy-Authorization"
@@ -62,7 +64,7 @@ func (s *HTTPServer) handleConn(req *http.Request, conn net.Conn) (peer net.Conn
 
 	_, err = conn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 	if err != nil {
-		peer.Close()
+		_ = peer.Close()
 		peer = nil
 	}
 
@@ -83,7 +85,7 @@ func (s *HTTPServer) handle(req *http.Request) (peer net.Conn, err error) {
 
 	err = req.Write(peer)
 	if err != nil {
-		peer.Close()
+		_ = peer.Close()
 		peer = nil
 		return peer, fmt.Errorf("conn write failed: %w", err)
 	}
@@ -91,19 +93,19 @@ func (s *HTTPServer) handle(req *http.Request) (peer net.Conn, err error) {
 	return
 }
 
-func (s *HTTPServer) serve(conn net.Conn) error {
-	defer conn.Close()
-
-	var rd io.Reader = bufio.NewReader(conn)
-	req, err := http.ReadRequest(rd.(*bufio.Reader))
+func (s *HTTPServer) serve(conn net.Conn) {
+	var rd = bufio.NewReader(conn)
+	req, err := http.ReadRequest(rd)
 	if err != nil {
-		return fmt.Errorf("read request failed: %w", err)
+		log.Printf("read request failed: %s\n", err)
+		return
 	}
 
 	code, err := s.authenticate(req)
 	if err != nil {
 		_ = responseWith(req, code).Write(conn)
-		return err
+		log.Println(err)
+		return
 	}
 
 	var peer net.Conn
@@ -114,43 +116,47 @@ func (s *HTTPServer) serve(conn net.Conn) error {
 		peer, err = s.handle(req)
 	default:
 		_ = responseWith(req, http.StatusMethodNotAllowed).Write(conn)
-		return fmt.Errorf("unsupported protocol: %s", req.Method)
+		log.Printf("unsupported protocol: %s\n", req.Method)
+		return
 	}
 	if err != nil {
-		return fmt.Errorf("dial proxy failed: %w", err)
+		log.Printf("dial proxy failed: %s\n", err)
+		return
 	}
 	if peer == nil {
-		return fmt.Errorf("dial proxy failed: peer nil")
+		log.Println("dial proxy failed: peer nil")
+		return
 	}
-	defer peer.Close()
-
 	go func() {
-		defer peer.Close()
-		defer conn.Close()
-		_, _ = io.Copy(conn, peer)
+		wg := conc.NewWaitGroup()
+		wg.Go(func() {
+			_, err = io.Copy(conn, peer)
+			_ = conn.Close()
+		})
+		wg.Go(func() {
+			_, err = io.Copy(peer, conn)
+			_ = peer.Close()
+		})
+		wg.Wait()
 	}()
-	_, err = io.Copy(peer, conn)
-
-	return err
 }
 
 // ListenAndServe is used to create a listener and serve on it
 func (s *HTTPServer) ListenAndServe(network, addr string) error {
-	server, err := net.Listen("tcp", s.config.BindAddress)
+	server, err := net.Listen(network, addr)
 	if err != nil {
 		return fmt.Errorf("listen tcp failed: %w", err)
 	}
-
+	defer func(server net.Listener) {
+		_ = server.Close()
+	}(server)
 	for {
 		conn, err := server.Accept()
 		if err != nil {
 			return fmt.Errorf("accept request failed: %w", err)
 		}
 		go func(conn net.Conn) {
-			err = s.serve(conn)
-			if err != nil {
-				log.Println(err)
-			}
+			s.serve(conn)
 		}(conn)
 	}
 }

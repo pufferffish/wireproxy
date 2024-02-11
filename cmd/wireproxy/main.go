@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"syscall"
 
 	"github.com/akamensky/argparse"
-	"github.com/octeep/wireproxy"
+	"github.com/pufferffish/wireproxy"
 	"golang.zx2c4.com/wireguard/device"
 	"suah.dev/protect"
 )
@@ -46,6 +48,15 @@ func executablePath() string {
 }
 
 func main() {
+	s := make(chan os.Signal, 1)
+	signal.Notify(s, syscall.SIGINT, syscall.SIGQUIT)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		<-s
+		cancel()
+	}()
+
 	exePath := executablePath()
 	unveilOrPanic("/", "r")
 	unveilOrPanic(exePath, "x")
@@ -138,5 +149,5 @@ func main() {
 		go spawner.SpawnRoutine(tnet)
 	}
 
-	select {} // sleep eternally
+	<-ctx.Done()
 }
