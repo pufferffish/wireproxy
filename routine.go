@@ -17,7 +17,7 @@ import (
 
 	"net/netip"
 
-	"golang.zx2c4.com/wireguard/tun/netstack"
+	"github.com/amnezia-vpn/amneziawg-go/tun/netstack"
 )
 
 // errorLogger is the logger to print error message

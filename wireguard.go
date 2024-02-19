@@ -7,9 +7,9 @@ import (
 	"net/netip"
 
 	"github.com/MakeNowJust/heredoc/v2"
-	"golang.zx2c4.com/wireguard/conn"
-	"golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/tun/netstack"
+	"github.com/amnezia-vpn/amneziawg-go/conn"
+	"github.com/amnezia-vpn/amneziawg-go/device"
+	"github.com/amnezia-vpn/amneziawg-go/tun/netstack"
 )
 
 // DeviceSetting contains the parameters for setting up a tun interface

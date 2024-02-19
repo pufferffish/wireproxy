@@ -10,8 +10,8 @@ import (
 	"syscall"
 
 	"github.com/akamensky/argparse"
+	"github.com/amnezia-vpn/amneziawg-go/device"
 	"github.com/pufferffish/wireproxy"
-	"golang.zx2c4.com/wireguard/device"
 	"suah.dev/protect"
 )
 
