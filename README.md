@@ -20,6 +20,9 @@ and configured my browser to use wireproxy for certain sites. It's pretty useful
 wireproxy is completely isolated from my network interfaces, and I don't need root to configure
 anything.
 
+Users who want something similar but for Amnezia VPN can use [this fork](https://github.com/juev/wireproxy/tree/feature/amnezia-go)
+of wireproxy by [@juev](https://github.com/juev).
+
 # Feature
 - TCP static routing for client and server
 - SOCKS5/HTTP proxy (currently only CONNECT is supported)
