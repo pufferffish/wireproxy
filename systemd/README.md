@@ -13,24 +13,12 @@ The provided systemd unit assumes you have the wireproxy executable installed on
 
 2. If necessary, customize the unit.
 
-   Edit the parts with `ExecStartPre=` and `ExecStart=` to point to the executable and the configuration file. For example, if wireproxy is installed on `/usr/bin` and the configuration file is located in `/opt/myfiles/wireproxy.conf` do the following change:
+   Edit the parts with `LoadCredential`, `ExecStartPre=` and `ExecStart=` to point to the executable and the configuration file. For example, if wireproxy is installed on `/usr/bin` and the configuration file is located in `/opt/myfiles/wireproxy.conf` do the following change:
    ```service
-   ExecStartPre=/usr/bin/wireproxy -n -c /opt/myfiles/wireproxy.conf
-   ExecStart=/usr/bin/wireproxy -c /opt/myfiles/wireproxy.conf
+   LoadCredential=conf:/opt/myfiles/wireproxy.conf
+   ExecStartPre=/usr/bin/wireproxy -n -c ${CREDENTIALS_DIRECTORY}/conf
+   ExecStart=/usr/bin/wireproxy -c ${CREDENTIALS_DIRECTORY}/conf
    ```
-   #### 2.2 Drop root privileges (optional, but recommended)
-   Without any modifications, this Wireproxy service will run as root. You might want to drop those privileges. One way to do this is to simply create a system account for Wireproxy (or just use your own user account to run it instead).
-   ```bash
-   sudo useradd --comment "Wireproxy tunnel" --system wireproxy
-   ```
-   Then uncomment these lines from the wireproxy.service:
-   ```service
-   #User=wireproxy
-   #Group=wireproxy
-   ```
-   Caveats:
-     1) Make sure `wireproxy` user can read the wireproxy configuration file.
-     2) Also note that unprivileged user cannot bind to ports below 1024 by default.
 
 4. Reload systemd and enable the unit.
    ```bash
