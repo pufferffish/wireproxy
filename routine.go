@@ -1,15 +1,20 @@
 package wireproxy
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	"errors"
+	"golang.zx2c4.com/wireguard/device"
 	"io"
 	"log"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
+	"path"
 	"strconv"
+	"strings"
 
 	"github.com/sourcegraph/conc"
 	"github.com/things-go/go-socks5"
@@ -32,6 +37,7 @@ type CredentialValidator struct {
 // VirtualTun stores a reference to netstack network and DNS configuration
 type VirtualTun struct {
 	Tnet      *netstack.Net
+	Dev       *device.Device
 	SystemDNS bool
 }
 
@@ -328,5 +334,40 @@ func (conf *TCPServerTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 			log.Fatal(err)
 		}
 		go tcpServerForward(vt, raddr, conn)
+	}
+}
+
+func (d VirtualTun) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Health metric request: %s\n", r.URL.Path)
+	switch path.Clean(r.URL.Path) {
+	case "/readyz":
+		w.WriteHeader(http.StatusOK)
+	case "/metrics":
+		get, err := d.Dev.IpcGet()
+		if err != nil {
+			errorLogger.Printf("Failed to get device metrics: %s\n", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		var buf bytes.Buffer
+		for _, peer := range strings.Split(get, "\n") {
+			pair := strings.SplitN(peer, "=", 2)
+			if len(pair) != 2 {
+				buf.WriteString(peer)
+				continue
+			}
+			if pair[0] == "private_key" || pair[0] == "preshared_key" {
+				pair[1] = "REDACTED"
+			}
+			buf.WriteString(pair[0])
+			buf.WriteString("=")
+			buf.WriteString(pair[1])
+			buf.WriteString("\n")
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(buf.Bytes())
+	default:
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
