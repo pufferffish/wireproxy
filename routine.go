@@ -3,6 +3,7 @@ package wireproxy
 import (
 	"bytes"
 	"context"
+	srand "crypto/rand"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -161,16 +162,16 @@ func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
 
 // SpawnRoutine spawns a http server.
 func (config *HTTPConfig) SpawnRoutine(vt *VirtualTun) {
-	http := &HTTPServer{
+	server := &HTTPServer{
 		config: config,
 		dial:   vt.Tnet.Dial,
 		auth:   CredentialValidator{config.Username, config.Password},
 	}
 	if config.Username != "" || config.Password != "" {
-		http.authRequired = true
+		server.authRequired = true
 	}
 
-	if err := http.ListenAndServe("tcp", config.BindAddress); err != nil {
+	if err := server.ListenAndServe("tcp", config.BindAddress); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -407,7 +408,7 @@ func (d VirtualTun) pingIPs() {
 		}
 
 		data := make([]byte, 16)
-		rand.Read(data)
+		_, _ = srand.Read(data)
 
 		requestPing := icmp.Echo{
 			Seq:  rand.Intn(1 << 16),
