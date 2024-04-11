@@ -151,6 +151,8 @@ func main() {
 		go spawner.SpawnRoutine(tun)
 	}
 
+	tun.StartPingIPs()
+
 	if *info != "" {
 		go func() {
 			err := http.ListenAndServe(*info, tun)

@@ -81,8 +81,10 @@ func StartWireguard(conf *DeviceConfig, logLevel int) (*VirtualTun, error) {
 	}
 
 	return &VirtualTun{
-		Tnet:      tnet,
-		Dev:       dev,
-		SystemDNS: len(setting.dns) == 0,
+		Tnet:       tnet,
+		Dev:        dev,
+		Conf:       conf,
+		SystemDNS:  len(setting.dns) == 0,
+		PingRecord: make(map[string]uint64),
 	}, nil
 }
