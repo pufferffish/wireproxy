@@ -22,12 +22,14 @@ type PeerConfig struct {
 
 // DeviceConfig contains the information to initiate a wireguard connection
 type DeviceConfig struct {
-	SecretKey  string
-	Endpoint   []netip.Addr
-	Peers      []PeerConfig
-	DNS        []netip.Addr
-	MTU        int
-	ListenPort *int
+	SecretKey          string
+	Endpoint           []netip.Addr
+	Peers              []PeerConfig
+	DNS                []netip.Addr
+	MTU                int
+	ListenPort         *int
+	CheckAlive         []netip.Addr
+	CheckAliveInterval int
 }
 
 type TCPClientTunnelConfig struct {
@@ -235,6 +237,25 @@ func ParseInterface(cfg *ini.File, device *DeviceConfig) error {
 			return err
 		}
 		device.ListenPort = &value
+	}
+
+	checkAlive, err := parseNetIP(section, "CheckAlive")
+	if err != nil {
+		return err
+	}
+	device.CheckAlive = checkAlive
+
+	device.CheckAliveInterval = 5
+	if sectionKey, err := section.GetKey("CheckAliveInterval"); err == nil {
+		value, err := sectionKey.Int()
+		if err != nil {
+			return err
+		}
+		if len(checkAlive) == 0 {
+			return errors.New("CheckAliveInterval is only valid when CheckAlive is set")
+		}
+
+		device.CheckAliveInterval = value
 	}
 
 	return nil

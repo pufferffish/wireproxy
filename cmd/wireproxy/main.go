@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -78,6 +79,7 @@ func main() {
 	config := parser.String("c", "config", &argparse.Options{Help: "Path of configuration file"})
 	silent := parser.Flag("s", "silent", &argparse.Options{Help: "Silent mode"})
 	daemon := parser.Flag("d", "daemon", &argparse.Options{Help: "Make wireproxy run in background"})
+	info := parser.String("i", "info", &argparse.Options{Help: "Specify the address and port for exposing health status"})
 	printVerison := parser.Flag("v", "version", &argparse.Options{Help: "Print version"})
 	configTest := parser.Flag("n", "configtest", &argparse.Options{Help: "Configtest mode. Only check the configuration file for validity."})
 
@@ -140,13 +142,24 @@ func main() {
 	// no file access is allowed from now on, only networking
 	pledgeOrPanic("stdio inet dns")
 
-	tnet, err := wireproxy.StartWireguard(conf.Device, logLevel)
+	tun, err := wireproxy.StartWireguard(conf.Device, logLevel)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, spawner := range conf.Routines {
-		go spawner.SpawnRoutine(tnet)
+		go spawner.SpawnRoutine(tun)
+	}
+
+	tun.StartPingIPs()
+
+	if *info != "" {
+		go func() {
+			err := http.ListenAndServe(*info, tun)
+			if err != nil {
+				panic(err)
+			}
+		}()
 	}
 
 	<-ctx.Done()
