@@ -119,7 +119,7 @@ func extractPort(addr string) uint16 {
 
 func lockNetwork(sections []wireproxy.RoutineSpawner, infoAddr *string) {
 	var rules []landlock.Rule
-	if infoAddr != nil {
+	if infoAddr != nil && *infoAddr != "" {
 		rules = append(rules, landlock.BindTCP(extractPort(*infoAddr)))
 	}
 
