@@ -93,9 +93,6 @@ func lock(stage string) {
 			landlock.RWFiles("/dev/log"),
 			landlock.RWFiles("/dev/null"),
 			landlock.RWFiles("/dev/full"),
-			landlock.RWFiles("/dev/stdin"),
-			landlock.RWFiles("/dev/stdout"),
-			landlock.RWFiles("/dev/stderr"),
 			landlock.RWFiles("/proc/self/fd"),
 		))
 	default:
