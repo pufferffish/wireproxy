@@ -106,12 +106,12 @@ func lock(stage string) {
 func extractPort(addr string) uint16 {
 	_, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to extract port from %s: %w", addr, err))
 	}
 
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to extract port from %s: %w", addr, err))
 	}
 
 	return uint16(port)
