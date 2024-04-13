@@ -62,7 +62,7 @@ func lock(stage string) {
 		// also remove unveil permission to lock unveil
 		pledgeOrPanic("stdio rpath inet dns proc exec")
 		// Linux
-		panicIfError(landlock.V4.BestEffort().RestrictPaths(
+		panicIfError(landlock.V1.BestEffort().RestrictPaths(
 			landlock.RODirs("/"),
 		))
 	case "boot-daemon":
@@ -75,7 +75,7 @@ func lock(stage string) {
 		pledgeOrPanic("stdio inet dns")
 		// Linux
 		net.DefaultResolver.PreferGo = true // needed to lock down dependencies
-		panicIfError(landlock.V4.BestEffort().RestrictPaths(
+		panicIfError(landlock.V1.BestEffort().RestrictPaths(
 			landlock.ROFiles("/etc/resolv.conf"),
 			landlock.ROFiles("/dev/fd"),
 			landlock.ROFiles("/dev/zero"),
@@ -136,7 +136,7 @@ func lockNetwork(sections []wireproxy.RoutineSpawner, infoAddr *string) {
 		}
 	}
 
-	panicIfError(landlock.V4.RestrictNet(rules...))
+	panicIfError(landlock.V4.BestEffort().RestrictNet(rules...))
 }
 
 func main() {
