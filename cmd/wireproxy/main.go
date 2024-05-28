@@ -22,6 +22,12 @@ import (
 // an argument to denote that this process was spawned by -d
 const daemonProcess = "daemon-process"
 
+// default paths for wireproxy config file
+var default_config_paths = []string {
+    "/etc/wireproxy/wireproxy.conf",
+    os.Getenv("HOME")+"/.config/wireproxy.conf",
+}
+
 var version = "1.0.8-dev"
 
 func panicIfError(err error) {
@@ -49,6 +55,16 @@ func executablePath() string {
 		return os.Args[0]
 	}
 	return programPath
+}
+
+// check if default config file paths exist
+func configFilePath() (string, bool) {
+    for _, path := range default_config_paths {
+        if _, err := os.Stat(path); err == nil {
+            return path, true
+        }
+    }
+    return "", false
 }
 
 func lock(stage string) {
@@ -177,8 +193,12 @@ func main() {
 	}
 
 	if *config == "" {
-		fmt.Println("configuration path is required")
-		return
+        if path, config_exist := configFilePath(); config_exist {
+            *config = path
+        } else {
+            fmt.Println("configuration path is required")
+            return
+        }
 	}
 
 	if !*daemon {
