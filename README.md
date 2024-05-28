@@ -33,7 +33,7 @@ of wireproxy by [@juev](https://github.com/juev).
 
 # Usage
 ```
-./wireproxy -c [path to config]
+./wireproxy [-c path to config]
 ```
 
 ```
@@ -47,6 +47,7 @@ Arguments:
 
   -h  --help        Print help information
   -c  --config      Path of configuration file
+                    Default paths: /etc/wireproxy/wireproxy.conf, $HOME/.config/wireproxy.conf
   -s  --silent      Silent mode
   -d  --daemon      Make wireproxy run in background
   -i  --info        Specify the address and port for exposing health status
