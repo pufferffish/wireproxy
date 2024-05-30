@@ -59,6 +59,7 @@ jobs:
           docker buildx build \
             --platform "$BUILD_PLATFORMS" \
             --tag "$CONTAINER_NAME:$CONTAINER_TAG" \
+            --tag "$CONTAINER_NAME:$GITHUB_SHA" \
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
             --label "org.opencontainers.image.documentation=${{ github.server_url }}/${{ github.repository }}" \
             --label "org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}/packages" \

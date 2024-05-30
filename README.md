@@ -76,6 +76,7 @@ Instructions for using wireproxy with Firefox container tabs and auto-start on M
 Address = 10.200.200.2/32 # The subnet should be /32 and /128 for IPv4 and v6 respectively
 # MTU = 1420 (optional)
 PrivateKey = uCTIK+56CPyCvwJxmU5dBfuyJvPuSXAq1FzHdnIxe1Q=
+# PrivateKey = $MY_WIREGUARD_PRIVATE_KEY # Alternatively, reference environment variables
 DNS = 10.200.200.1
 
 [Peer]
