@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv" // Add the missing import
 	"strings"
 
 	"github.com/sourcegraph/conc"
@@ -158,5 +159,21 @@ func (s *HTTPServer) ListenAndServe(network, addr string) error {
 		go func(conn net.Conn) {
 			s.serve(conn)
 		}(conn)
+	}
+}
+
+// responseWith constructs an HTTP response with the given status code
+func responseWith(req *http.Request, statusCode int) *http.Response {
+	statusText := http.StatusText(statusCode)
+	body := "wireproxy:" + " " + req.Proto + " " + strconv.Itoa(statusCode) + " " + statusText + "\r\n"
+
+	return &http.Response{
+		StatusCode: statusCode,
+		Status:     statusText,
+		Proto:      req.Proto,
+		ProtoMajor: req.ProtoMajor,
+		ProtoMinor: req.ProtoMinor,
+		Header:     http.Header{},
+		Body:       io.NopCloser(bytes.NewBufferString(body)),
 	}
 }

@@ -3,8 +3,11 @@ package wireproxy
 import (
 	"bytes"
 	"fmt"
-
+	"log"
 	"net/netip"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"golang.zx2c4.com/wireguard/conn"
@@ -59,7 +62,7 @@ func createIPCRequest(conf *DeviceConfig) (*DeviceSetting, error) {
 }
 
 // StartWireguard creates a tun interface on netstack given a configuration
-func StartWireguard(conf *DeviceConfig, logLevel int) (*VirtualTun, error) {
+func StartWireguard(conf *DeviceConfig, logLevel int, configName string) (*VirtualTun, error) {
 	setting, err := createIPCRequest(conf)
 	if err != nil {
 		return nil, err
@@ -76,6 +79,35 @@ func StartWireguard(conf *DeviceConfig, logLevel int) (*VirtualTun, error) {
 	}
 
 	err = dev.Up()
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure handshake is established
+	for _, peer := range conf.Peers {
+		if peer.Endpoint != nil {
+			// Check handshake status
+			handshakeEstablished := false
+			for i := 0; i < 3; i++ { // Retry for a few seconds
+				peerStatus, err := dev.IpcGet()
+				if err != nil {
+					return nil, fmt.Errorf("failed to get device status: %w", err)
+				}
+				if strings.Contains(peerStatus, *peer.Endpoint) {
+					handshakeEstablished = true
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+			if !handshakeEstablished {
+				log.Printf("All retries are completed, VPN is not working. Config name: %s", configName)
+				os.Exit(1)
+			}
+		}
+	}
+
+	// Perform Google connectivity check only if the handshake is successful
+	err = CheckGoogleConnectivity(tnet, configName)
 	if err != nil {
 		return nil, err
 	}

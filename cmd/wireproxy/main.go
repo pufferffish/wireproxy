@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 
@@ -213,6 +214,9 @@ func main() {
 		return
 	}
 
+	// Extract the configuration name from the file path
+	configName := filepath.Base(*config)
+
 	// Wireguard doesn't allow configuring which FD to use for logging
 	// https://github.com/WireGuard/wireguard-go/blob/master/device/logger.go#L39
 	// so redirect STDOUT to STDERR, we don't want to print anything to STDOUT anyways
@@ -224,7 +228,7 @@ func main() {
 
 	lock("ready")
 
-	tun, err := wireproxy.StartWireguard(conf.Device, logLevel)
+	tun, err := wireproxy.StartWireguard(conf.Device, logLevel, configName)
 	if err != nil {
 		log.Fatal(err)
 	}

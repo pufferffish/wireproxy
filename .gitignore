@@ -4,3 +4,5 @@
 /.idea
 .goreleaser.yml
 *.conf
+.DS_Store
+*/.DS_Store

@@ -5,6 +5,12 @@
 
 A wireguard client that exposes itself as a socks5/http proxy or tunnels.
 
+## Fork Features (Added by Wope Team)
+This fork introduces several new features to enhance VPN health checks and connectivity validation:
+- **Google Connectivity Check**: Ensures the VPN connection is capable of accessing external resources by performing a connectivity check to Google.
+- **IP Check Logic**: Verifies the public IP address using an external service to ensure the VPN is correctly routing traffic.
+- **Program Termination on Failure**: If critical checks (like handshake and Google connectivity) fail, the program logs detailed error messages and exits, preventing the system from running in an unreliable state.
+
 # What is this
 `wireproxy` is a completely userspace application that connects to a wireguard peer,
 and exposes a socks5/http proxy or tunnels on the machine. This can be useful if you need
