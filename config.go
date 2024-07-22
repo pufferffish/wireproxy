@@ -175,13 +175,18 @@ func parseCIDRNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) 
 		if len(str) == 0 {
 			continue
 		}
-		prefix, err := netip.ParsePrefix(str)
-		if err != nil {
-			return nil, err
+    
+		if addr, err := netip.ParseAddr(str); err == nil {
+			ips = append(ips, addr)
+		} else {
+			prefix, err := netip.ParsePrefix(str)
+			if err != nil {
+				return nil, err
+			}
+      
+			addr := prefix.Addr()
+			ips = append(ips, addr)
 		}
-
-		addr := prefix.Addr()
-		ips = append(ips, addr)
 	}
 	return ips, nil
 }

@@ -20,8 +20,8 @@ type DeviceSetting struct {
 	mtu        int
 }
 
-// serialize the config into an IPC request and DeviceSetting
-func createIPCRequest(conf *DeviceConfig) (*DeviceSetting, error) {
+// CreateIPCRequest serialize the config into an IPC request and DeviceSetting
+func CreateIPCRequest(conf *DeviceConfig) (*DeviceSetting, error) {
 	var request bytes.Buffer
 
 	request.WriteString(fmt.Sprintf("private_key=%s\n", conf.SecretKey))
@@ -60,7 +60,7 @@ func createIPCRequest(conf *DeviceConfig) (*DeviceSetting, error) {
 
 // StartWireguard creates a tun interface on netstack given a configuration
 func StartWireguard(conf *DeviceConfig, logLevel int) (*VirtualTun, error) {
-	setting, err := createIPCRequest(conf)
+	setting, err := CreateIPCRequest(conf)
 	if err != nil {
 		return nil, err
 	}
