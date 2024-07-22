@@ -14,10 +14,10 @@ import (
 
 // DeviceSetting contains the parameters for setting up a tun interface
 type DeviceSetting struct {
-	ipcRequest string
-	dns        []netip.Addr
-	deviceAddr []netip.Addr
-	mtu        int
+	IpcRequest string
+	DNS        []netip.Addr
+	DeviceAddr []netip.Addr
+	MTU        int
 }
 
 // CreateIPCRequest serialize the config into an IPC request and DeviceSetting
@@ -54,7 +54,7 @@ func CreateIPCRequest(conf *DeviceConfig) (*DeviceSetting, error) {
 		}
 	}
 
-	setting := &DeviceSetting{ipcRequest: request.String(), dns: conf.DNS, deviceAddr: conf.Endpoint, mtu: conf.MTU}
+	setting := &DeviceSetting{IpcRequest: request.String(), DNS: conf.DNS, DeviceAddr: conf.Endpoint, MTU: conf.MTU}
 	return setting, nil
 }
 
@@ -65,12 +65,12 @@ func StartWireguard(conf *DeviceConfig, logLevel int) (*VirtualTun, error) {
 		return nil, err
 	}
 
-	tun, tnet, err := netstack.CreateNetTUN(setting.deviceAddr, setting.dns, setting.mtu)
+	tun, tnet, err := netstack.CreateNetTUN(setting.DeviceAddr, setting.DNS, setting.MTU)
 	if err != nil {
 		return nil, err
 	}
 	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(logLevel, ""))
-	err = dev.IpcSet(setting.ipcRequest)
+	err = dev.IpcSet(setting.IpcRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func StartWireguard(conf *DeviceConfig, logLevel int) (*VirtualTun, error) {
 		Tnet:       tnet,
 		Dev:        dev,
 		Conf:       conf,
-		SystemDNS:  len(setting.dns) == 0,
+		SystemDNS:  len(setting.DNS) == 0,
 		PingRecord: make(map[string]uint64),
 	}, nil
 }
