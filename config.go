@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/go-ini/ini"
@@ -68,6 +69,18 @@ func parseString(section *ini.Section, keyName string) (string, error) {
 	if key == nil {
 		return "", errors.New(keyName + " should not be empty")
 	}
+	value := key.String()
+	if strings.HasPrefix(value, "$") {
+		if strings.HasPrefix(value, "$$") {
+			return strings.Replace(value, "$$", "$", 1), nil
+		}
+		var ok bool
+		value, ok = os.LookupEnv(strings.TrimPrefix(value, "$"))
+		if !ok {
+			return "", errors.New(keyName + " references unset environment variable " + key.String())
+		}
+		return value, nil
+	}
 	return key.String(), nil
 }
 
@@ -122,15 +135,21 @@ func encodeBase64ToHex(key string) (string, error) {
 }
 
 func parseNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) {
-	key := section.Key(keyName)
-	if key == nil {
-		return []netip.Addr{}, nil
+	key, err := parseString(section, keyName)
+	if err != nil {
+		if strings.Contains(err.Error(), "should not be empty") {
+			return []netip.Addr{}, nil
+		}
+		return nil, err
 	}
 
-	keys := key.StringsWithShadows(",")
+	keys := strings.Split(key, ",")
 	var ips = make([]netip.Addr, 0, len(keys))
 	for _, str := range keys {
 		str = strings.TrimSpace(str)
+		if len(str) == 0 {
+			continue
+		}
 		ip, err := netip.ParseAddr(str)
 		if err != nil {
 			return nil, err
@@ -141,14 +160,22 @@ func parseNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) {
 }
 
 func parseCIDRNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) {
-	key := section.Key(keyName)
-	if key == nil {
-		return []netip.Addr{}, nil
+	key, err := parseString(section, keyName)
+	if err != nil {
+		if strings.Contains(err.Error(), "should not be empty") {
+			return []netip.Addr{}, nil
+		}
+		return nil, err
 	}
 
-	keys := key.StringsWithShadows(",")
+	keys := strings.Split(key, ",")
 	var ips = make([]netip.Addr, 0, len(keys))
 	for _, str := range keys {
+		str = strings.TrimSpace(str)
+		if len(str) == 0 {
+			continue
+		}
+    
 		if addr, err := netip.ParseAddr(str); err == nil {
 			ips = append(ips, addr)
 		} else {
@@ -156,7 +183,7 @@ func parseCIDRNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) 
 			if err != nil {
 				return nil, err
 			}
-
+      
 			addr := prefix.Addr()
 			ips = append(ips, addr)
 		}
@@ -165,14 +192,21 @@ func parseCIDRNetIP(section *ini.Section, keyName string) ([]netip.Addr, error) 
 }
 
 func parseAllowedIPs(section *ini.Section) ([]netip.Prefix, error) {
-	key := section.Key("AllowedIPs")
-	if key == nil {
-		return []netip.Prefix{}, nil
+	key, err := parseString(section, "AllowedIPs")
+	if err != nil {
+		if strings.Contains(err.Error(), "should not be empty") {
+			return []netip.Prefix{}, nil
+		}
+		return nil, err
 	}
 
-	keys := key.StringsWithShadows(",")
+	keys := strings.Split(key, ",")
 	var ips = make([]netip.Prefix, 0, len(keys))
 	for _, str := range keys {
+		str = strings.TrimSpace(str)
+		if len(str) == 0 {
+			continue
+		}
 		prefix, err := netip.ParsePrefix(str)
 		if err != nil {
 			return nil, err
@@ -292,8 +326,7 @@ func ParsePeers(cfg *ini.File, peers *[]PeerConfig) error {
 			peer.PreSharedKey = value
 		}
 
-		if sectionKey, err := section.GetKey("Endpoint"); err == nil {
-			value := sectionKey.String()
+		if value, err := parseString(section, "Endpoint"); err == nil {
 			decoded, err = resolveIPPAndPort(strings.ToLower(value))
 			if err != nil {
 				return err
