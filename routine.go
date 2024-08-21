@@ -173,6 +173,10 @@ func (config *HTTPConfig) SpawnRoutine(vt *VirtualTun) {
 		server.authRequired = true
 	}
 
+	if config.CertFile != "" && config.KeyFile != "" {
+		server.tlsRequired = true
+	}
+
 	if err := server.ListenAndServe("tcp", config.BindAddress); err != nil {
 		log.Fatal(err)
 	}
