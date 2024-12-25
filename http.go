@@ -50,6 +50,7 @@ func (s *HTTPServer) authenticate(req *http.Request) (int, error) {
 	return http.StatusUnauthorized, fmt.Errorf("username and password not matching")
 }
 
+// handleConn sets up tunneling for CONNECT requests.
 func (s *HTTPServer) handleConn(req *http.Request, conn net.Conn) (peer net.Conn, err error) {
 	addr := req.Host
 	if !strings.Contains(addr, ":") {
@@ -59,18 +60,19 @@ func (s *HTTPServer) handleConn(req *http.Request, conn net.Conn) (peer net.Conn
 
 	peer, err = s.dial("tcp", addr)
 	if err != nil {
-		return peer, fmt.Errorf("tun tcp dial failed: %w", err)
+		return nil, fmt.Errorf("tun tcp dial failed: %w", err)
 	}
 
 	_, err = conn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 	if err != nil {
 		_ = peer.Close()
-		peer = nil
+		return nil, err
 	}
 
-	return
+	return peer, nil
 }
 
+// handle handles standard HTTP methods.
 func (s *HTTPServer) handle(req *http.Request) (peer net.Conn, err error) {
 	addr := req.Host
 	if !strings.Contains(addr, ":") {
@@ -80,35 +82,37 @@ func (s *HTTPServer) handle(req *http.Request) (peer net.Conn, err error) {
 
 	peer, err = s.dial("tcp", addr)
 	if err != nil {
-		return peer, fmt.Errorf("tun tcp dial failed: %w", err)
+		return nil, fmt.Errorf("tun tcp dial failed: %w", err)
 	}
 
 	err = req.Write(peer)
 	if err != nil {
 		_ = peer.Close()
-		peer = nil
-		return peer, fmt.Errorf("conn write failed: %w", err)
+		return nil, fmt.Errorf("conn write failed: %w", err)
 	}
 
-	return
+	return peer, nil
 }
 
+// serve handles one connection from the listener.
 func (s *HTTPServer) serve(conn net.Conn) {
 	var rd = bufio.NewReader(conn)
 	req, err := http.ReadRequest(rd)
 	if err != nil {
 		log.Printf("read request failed: %s\n", err)
+		conn.Close() // ensure StatsConn closes
 		return
 	}
 
-	code, err := s.authenticate(req)
-	if err != nil {
+	code, authErr := s.authenticate(req)
+	if authErr != nil {
 		resp := responseWith(req, code)
 		if code == http.StatusProxyAuthRequired {
 			resp.Header.Set("Proxy-Authenticate", "Basic realm=\"Proxy\"")
 		}
 		_ = resp.Write(conn)
-		log.Println(err)
+		log.Println(authErr)
+		conn.Close() // ensure StatsConn closes
 		return
 	}
 
@@ -121,46 +125,41 @@ func (s *HTTPServer) serve(conn net.Conn) {
 	default:
 		_ = responseWith(req, http.StatusMethodNotAllowed).Write(conn)
 		log.Printf("unsupported protocol: %s\n", req.Method)
+		conn.Close() // ensure StatsConn closes
 		return
 	}
+
 	if err != nil {
 		log.Printf("dial proxy failed: %s\n", err)
+		conn.Close() // ensure StatsConn closes
 		return
 	}
 	if peer == nil {
 		log.Println("dial proxy failed: peer nil")
+		conn.Close() // ensure StatsConn closes
 		return
 	}
 	go func() {
 		wg := conc.NewWaitGroup()
 		wg.Go(func() {
-			_, err = io.Copy(conn, peer)
-			_ = conn.Close()
+			_, _ = io.Copy(conn, peer)
+			conn.Close()
 		})
 		wg.Go(func() {
-			_, err = io.Copy(peer, conn)
+			_, _ = io.Copy(peer, conn)
 			_ = peer.Close()
 		})
 		wg.Wait()
 	}()
 }
 
-// ListenAndServe is used to create a listener and serve on it
-func (s *HTTPServer) ListenAndServe(network, addr string) error {
-	server, err := net.Listen(network, addr)
-	if err != nil {
-		return fmt.Errorf("listen tcp failed: %w", err)
-	}
-	defer func(server net.Listener) {
-		_ = server.Close()
-	}(server)
+// Serve runs an accept loop on the given listener.
+func (s *HTTPServer) Serve(listener net.Listener) error {
 	for {
-		conn, err := server.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
 			return fmt.Errorf("accept request failed: %w", err)
 		}
-		go func(conn net.Conn) {
-			s.serve(conn)
-		}(conn)
+		go s.serve(conn)
 	}
 }

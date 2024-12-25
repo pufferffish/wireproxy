@@ -21,6 +21,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sourcegraph/conc"
@@ -34,6 +35,59 @@ import (
 
 // errorLogger is the logger to print error message
 var errorLogger = log.New(os.Stderr, "ERROR: ", log.LstdFlags)
+
+type ProxyStats struct {
+	ProxyType          string `json:"type"`
+	BindAddress        string `json:"bind_address"`
+	ActiveConnections  int    `json:"active_connections"`
+	LastConnectionTime int64  `json:"last_connection_time"`
+	TotalConnections   int    `json:"total_connections"`
+
+	mu sync.Mutex
+}
+
+func (ps *ProxyStats) IncConnection() {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	ps.ActiveConnections++
+	ps.TotalConnections++
+	ps.LastConnectionTime = time.Now().Unix()
+}
+
+func (ps *ProxyStats) DecConnection() {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	if ps.ActiveConnections > 0 {
+		ps.ActiveConnections--
+	}
+}
+
+type StatsListener struct {
+	net.Listener
+	stats *ProxyStats
+}
+
+func (sl *StatsListener) Accept() (net.Conn, error) {
+	c, err := sl.Listener.Accept()
+	if err == nil {
+		sl.stats.IncConnection()
+		c = &StatsConn{
+			Conn:  c,
+			stats: sl.stats,
+		}
+	}
+	return c, err
+}
+
+type StatsConn struct {
+	net.Conn
+	stats *ProxyStats
+}
+
+func (sc *StatsConn) Close() error {
+	sc.stats.DecConnection()
+	return sc.Conn.Close()
+}
 
 // CredentialValidator stores the authentication data of a socks5 proxy
 type CredentialValidator struct {
@@ -49,6 +103,8 @@ type VirtualTun struct {
 	Conf      *DeviceConfig
 	// PingRecord stores the last time an IP was pinged
 	PingRecord map[string]uint64
+	mu        sync.Mutex
+	ProxyList []*ProxyStats
 }
 
 // RoutineSpawner spawns a routine (e.g. socks5, tcp static routes) after the configuration is parsed
@@ -63,7 +119,7 @@ type addressPort struct {
 
 // LookupAddr lookups a hostname.
 // DNS traffic may or may not be routed depending on VirtualTun's setting
-func (d VirtualTun) LookupAddr(ctx context.Context, name string) ([]string, error) {
+func (d *VirtualTun) LookupAddr(ctx context.Context, name string) ([]string, error) {
 	if d.SystemDNS {
 		return net.DefaultResolver.LookupHost(ctx, name)
 	}
@@ -72,7 +128,7 @@ func (d VirtualTun) LookupAddr(ctx context.Context, name string) ([]string, erro
 
 // ResolveAddrWithContext resolves a hostname and returns an AddrPort.
 // DNS traffic may or may not be routed depending on VirtualTun's setting
-func (d VirtualTun) ResolveAddrWithContext(ctx context.Context, name string) (*netip.Addr, error) {
+func (d *VirtualTun) ResolveAddrWithContext(ctx context.Context, name string) (*netip.Addr, error) {
 	addrs, err := d.LookupAddr(ctx, name)
 	if err != nil {
 		return nil, err
@@ -104,7 +160,7 @@ func (d VirtualTun) ResolveAddrWithContext(ctx context.Context, name string) (*n
 
 // Resolve resolves a hostname and returns an IP.
 // DNS traffic may or may not be routed depending on VirtualTun's setting
-func (d VirtualTun) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
+func (d *VirtualTun) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
 	addr, err := d.ResolveAddrWithContext(ctx, name)
 	if err != nil {
 		return nil, nil, err
@@ -127,7 +183,7 @@ func parseAddressPort(endpoint string) (*addressPort, error) {
 	return &addressPort{address: name, port: uint16(port)}, nil
 }
 
-func (d VirtualTun) resolveToAddrPort(endpoint *addressPort) (*netip.AddrPort, error) {
+func (d *VirtualTun) resolveToAddrPort(endpoint *addressPort) (*netip.AddrPort, error) {
 	addr, err := d.ResolveAddrWithContext(context.Background(), endpoint.address)
 	if err != nil {
 		return nil, err
@@ -139,6 +195,12 @@ func (d VirtualTun) resolveToAddrPort(endpoint *addressPort) (*netip.AddrPort, e
 
 // SpawnRoutine spawns a socks5 server.
 func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
+	stats := &ProxyStats{
+		ProxyType:   "socks5",
+		BindAddress: config.BindAddress,
+	}
+	vt.RegisterProxyStats(stats)
+
 	var authMethods []socks5.Authenticator
 	if username := config.Username; username != "" {
 		authMethods = append(authMethods, socks5.UserPassAuthenticator{
@@ -157,13 +219,27 @@ func (config *Socks5Config) SpawnRoutine(vt *VirtualTun) {
 
 	server := socks5.NewServer(options...)
 
-	if err := server.ListenAndServe("tcp", config.BindAddress); err != nil {
+	ln, err := net.Listen("tcp", config.BindAddress)
+	if err != nil {
 		log.Fatal(err)
 	}
+	ln = &StatsListener{Listener: ln, stats: stats}
+
+	go func() {
+		if err := server.Serve(ln); err != nil {
+			log.Fatal(err)
+		}
+	}()
 }
 
 // SpawnRoutine spawns a http server.
 func (config *HTTPConfig) SpawnRoutine(vt *VirtualTun) {
+	stats := &ProxyStats{
+		ProxyType:   "http",
+		BindAddress: config.BindAddress,
+	}
+	vt.RegisterProxyStats(stats)
+
 	server := &HTTPServer{
 		config: config,
 		dial:   vt.Tnet.Dial,
@@ -173,9 +249,17 @@ func (config *HTTPConfig) SpawnRoutine(vt *VirtualTun) {
 		server.authRequired = true
 	}
 
-	if err := server.ListenAndServe("tcp", config.BindAddress); err != nil {
+	ln, err := net.Listen("tcp", config.BindAddress)
+	if err != nil {
 		log.Fatal(err)
 	}
+	ln = &StatsListener{Listener: ln, stats: stats}
+
+	go func() {
+		if err := server.Serve(ln); err != nil {
+			log.Fatal(err)
+		}
+	}()
 }
 
 // Valid checks the authentication data in CredentialValidator and compare them
@@ -198,7 +282,7 @@ func connForward(from io.ReadWriteCloser, to io.ReadWriteCloser) {
 func tcpClientForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 	target, err := vt.resolveToAddrPort(raddr)
 	if err != nil {
-		errorLogger.Printf("TCP Server Tunnel to %s: %s\n", target, err.Error())
+		errorLogger.Printf("TCP Server Tunnel to %s: %s\n", raddr.address, err.Error())
 		return
 	}
 
@@ -297,7 +381,7 @@ func (conf *STDIOTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 func tcpServerForward(vt *VirtualTun, raddr *addressPort, conn net.Conn) {
 	target, err := vt.resolveToAddrPort(raddr)
 	if err != nil {
-		errorLogger.Printf("TCP Server Tunnel to %s: %s\n", target, err.Error())
+		errorLogger.Printf("TCP Server Tunnel to %s: %s\n", raddr.address, err.Error())
 		return
 	}
 
@@ -347,7 +431,8 @@ func (conf *TCPServerTunnelConfig) SpawnRoutine(vt *VirtualTun) {
 	}
 }
 
-func (d VirtualTun) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// ServeHTTP is used for health/metrics requests.
+func (d *VirtualTun) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Health metric request: %s\n", r.URL.Path)
 	switch path.Clean(r.URL.Path) {
 	case "/readyz":
@@ -396,12 +481,36 @@ func (d VirtualTun) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(buf.Bytes())
+
+	case "/stats":
+		// Return statistics about all running proxies
+		d.mu.Lock()
+		snapshot := make([]ProxyStats, len(d.ProxyList))
+		for i, ps := range d.ProxyList {
+			ps.mu.Lock()
+			snapshot[i] = ProxyStats{
+				ProxyType:          ps.ProxyType,
+				BindAddress:        ps.BindAddress,
+				ActiveConnections:  ps.ActiveConnections,
+				LastConnectionTime: ps.LastConnectionTime,
+				TotalConnections:   ps.TotalConnections,
+			}
+			ps.mu.Unlock()
+		}
+		d.mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(snapshot); err != nil {
+			errorLogger.Printf("Failed to encode /stats: %s", err)
+		}
+
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
-func (d VirtualTun) pingIPs() {
+// pingIPs pings the IP addresses configured in CheckAlive
+func (d *VirtualTun) pingIPs() {
 	for _, addr := range d.Conf.CheckAlive {
 		socket, err := d.Tnet.Dial("ping", addr.String())
 		if err != nil {
@@ -482,7 +591,8 @@ func (d VirtualTun) pingIPs() {
 	}
 }
 
-func (d VirtualTun) StartPingIPs() {
+// StartPingIPs starts a goroutine that periodically pings the IP addresses in CheckAlive
+func (d *VirtualTun) StartPingIPs() {
 	for _, addr := range d.Conf.CheckAlive {
 		d.PingRecord[addr.String()] = 0
 	}
@@ -493,4 +603,11 @@ func (d VirtualTun) StartPingIPs() {
 			time.Sleep(time.Duration(d.Conf.CheckAliveInterval) * time.Second)
 		}
 	}()
+}
+
+// RegisterProxyStats is used to store the newly created proxy stats object
+func (d *VirtualTun) RegisterProxyStats(ps *ProxyStats) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.ProxyList = append(d.ProxyList, ps)
 }
