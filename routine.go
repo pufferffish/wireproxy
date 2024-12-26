@@ -21,6 +21,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sourcegraph/conc"
@@ -48,7 +49,8 @@ type VirtualTun struct {
 	SystemDNS bool
 	Conf      *DeviceConfig
 	// PingRecord stores the last time an IP was pinged
-	PingRecord map[string]uint64
+	PingRecord     map[string]uint64
+	PingRecordLock *sync.Mutex
 }
 
 // RoutineSpawner spawns a routine (e.g. socks5, tcp static routes) after the configuration is parsed
@@ -475,7 +477,9 @@ func (d VirtualTun) pingIPs() {
 				}
 			}
 
+			d.PingRecordLock.Lock()
 			d.PingRecord[addr.String()] = uint64(time.Now().Unix())
+			d.PingRecordLock.Unlock()
 
 			defer socket.Close()
 		}()
