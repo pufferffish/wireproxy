@@ -70,6 +70,12 @@ cd wireproxy
 make
 ```
 
+# Install
+
+```bash
+go install github.com/pufferffish/wireproxy/cmd/wireproxy@v1.0.9 # or @latest
+```
+
 # Use with VPN
 
 Instructions for using wireproxy with Firefox container tabs and auto-start on MacOS can be found [here](/UseWithVPN.md).
