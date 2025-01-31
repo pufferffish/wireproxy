@@ -9,7 +9,6 @@ require (
 	github.com/akamensky/argparse v1.4.0
 	github.com/go-ini/ini v1.67.0
 	github.com/landlock-lsm/go-landlock v0.0.0-20240216195629-efb66220540a
-	github.com/sourcegraph/conc v0.3.0
 	github.com/things-go/go-socks5 v0.0.5
 	golang.org/x/net v0.23.0
 	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173
