@@ -30,7 +30,7 @@ func (s *HTTPServer) authenticate(req *http.Request) (int, error) {
 
 	auth := req.Header.Get(proxyAuthHeaderKey)
 	if auth == "" {
-		return http.StatusProxyAuthRequired, fmt.Errorf(http.StatusText(http.StatusProxyAuthRequired))
+		return http.StatusProxyAuthRequired, fmt.Errorf("%s", http.StatusText(http.StatusProxyAuthRequired))
 	}
 
 	enc := strings.TrimPrefix(auth, "Basic ")
@@ -134,14 +134,14 @@ func (s *HTTPServer) serve(conn net.Conn) {
 		defer conn.Close()
 		defer peer.Close()
 
-		io.Copy(conn, peer)
+		_, _ = io.Copy(conn, peer)
 	}()
 
 	go func() {
 		defer conn.Close()
 		defer peer.Close()
 
-		io.Copy(peer, conn)
+		_, _ = io.Copy(peer, conn)
 	}()
 }
 
