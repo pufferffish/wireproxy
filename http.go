@@ -10,8 +10,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-
-	"github.com/sourcegraph/conc"
 )
 
 const proxyAuthHeaderKey = "Proxy-Authorization"
@@ -131,17 +129,19 @@ func (s *HTTPServer) serve(conn net.Conn) {
 		log.Println("dial proxy failed: peer nil")
 		return
 	}
+
 	go func() {
-		wg := conc.NewWaitGroup()
-		wg.Go(func() {
-			_, err = io.Copy(conn, peer)
-			_ = conn.Close()
-		})
-		wg.Go(func() {
-			_, err = io.Copy(peer, conn)
-			_ = peer.Close()
-		})
-		wg.Wait()
+		defer conn.Close()
+		defer peer.Close()
+
+		io.Copy(conn, peer)
+	}()
+
+	go func() {
+		defer conn.Close()
+		defer peer.Close()
+
+		io.Copy(peer, conn)
 	}()
 }
 
