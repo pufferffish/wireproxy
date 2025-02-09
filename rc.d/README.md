@@ -6,7 +6,7 @@ The provided systemd unit assumes you have the wireproxy executable installed on
 
 # Setting up the unit
 
-1. Copy the `wireproxy` file from this directory to `/usr/local/etc/rc.d`, or use the following cURL command to download it:
+1. Copy the `wireproxy` file from this directory to `/usr/local/etc/rc.d`.
 
 2. If necessary, customize the unit.
    Edit the parts with `procname`, `command`, `wireproxy_conf`  to point to the executable and the configuration file.
